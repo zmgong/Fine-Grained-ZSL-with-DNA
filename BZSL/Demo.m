@@ -47,11 +47,11 @@
 clear all;
 %clc;
 
-datapath = '..\data\';
+datapath = '../data/';
 dataset = 'INSECT'; %  {'INSECT', 'CUB_DNA'}
 
-fname1=[datapath, dataset, '\res101.mat'];
-fname2=[datapath, dataset, '\att_splits.mat'];
+fname1=[datapath, dataset, '/res101.mat'];
+fname2=[datapath, dataset, '/att_splits.mat'];
 load(fname1)
 load(fname2)
 
