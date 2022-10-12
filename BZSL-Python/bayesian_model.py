@@ -240,6 +240,13 @@ class Model(object):
         print('PPD derivation is Done!!')
         return self.calculate_ppd_params(x_tr, y_tr, att_seen,att_unseen,us_classes, K,Psi,mu_0,m,k_0,k_1)    
 
+    def hyperparameter_tuning(self):
+        dim = 500
+
+
+
+        return 0
+
     def train_and_eval(self):
 
         dataloader = data_loader(self.datapath, self.dataset, self.side_info, self.tuning)
