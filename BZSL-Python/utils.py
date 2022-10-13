@@ -130,9 +130,9 @@ def apply_pca(x_tr, x_ts_s, x_ts_us, pca_dim):
     return x_tr, x_ts_s, x_ts_us
 
 
-def split_loc_by_ratio(loc_index, ratio=0.2):
+def split_loc_by_ratio(loc_index, ratio=0.17241633):
     n = int(len(loc_index) * ratio)
     np.random.shuffle(loc_index)
     test_loc = loc_index[0:n]
-    train_loc = loc_index[n + 1:]
+    train_loc = loc_index[n:]
     return np.sort(train_loc), np.sort(test_loc)
