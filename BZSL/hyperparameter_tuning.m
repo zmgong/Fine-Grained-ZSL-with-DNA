@@ -83,7 +83,7 @@ function [k0, k1, mm, a0, b0, mu_0, s, K] = hyperparameter_tuning(xtrain,ytrain,
             end
         end
     else
-        
+
         d           = size(xtrain, 2);
         %m_range     = [10*d 50*d 500*d];
         % Precalculation of class means and scatter matrices for constrained model

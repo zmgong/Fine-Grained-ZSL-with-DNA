@@ -54,7 +54,6 @@ class Model(object):
                     curr_classes[-1] = seenclasses[s_in[K + ect]]
                     ect += 1
                     break
-
         usclass_list[curr_unseen_class] = curr_classes
 
         return curr_classes, usclass_list
@@ -227,8 +226,6 @@ class Model(object):
                     k += 1
                     w, v_v = np.linalg.eig(Sig_s[:, :, j])
                     min_eig = v_v.min().astype(np.float)
-                    # min_eig = v_v.min()
-                    # print("?")
                     Sig_s[:, :, j] += (-min_eig * k * k + np.spacing(min_eig)) * I
 
             # chsig = np.linalg.cholesky(Sig_s[:, :, j])  # Cholesky decomposition
@@ -254,7 +251,7 @@ class Model(object):
         att_seen = att[:, s_classes].T
         d0 = x_tr.shape[1]
 
-        if self.tuning:
+        if tuning:
             Psi = (m - d0 - 1) * Sigma_0 / s
         else:
             [mu_0, Sigma_0] = self.calculate_priors(x_tr, y_tr)
@@ -310,7 +307,7 @@ class Model(object):
                     for k_1 in k1_range:
                         for m in m_range:
                             for ss in s_range:
-                                time_1 = time.time()
+                                time_s = time.time()
                                 Sig_s, mu_s, v_s, class_id, _ = self.bayesian_cls_train(xtrain, ytrain,
                                                                                         dataloader.unseenclasses, att,
                                                                                         k_0=k_0,
@@ -318,8 +315,8 @@ class Model(object):
                                                                                         mu_0=mu_0,
                                                                                         Sigma_0=Sigma_0,
                                                                                         pca_dim=self.pca_dim,
-                                                                                        tuning=False)
-                                time_2 = time.time()
+                                                                                        tuning=True)
+
                                 ### Prediction phase ###
                                 ypred_unseen, prob_mat_unseen = self.bayesian_cls_evaluate(xtest_unseen, Sig_s, mu_s,
                                                                                            v_s, class_id)
@@ -340,12 +337,10 @@ class Model(object):
                                         k_0, k_1, m, ss, kk, self.dataset))
                                     print('BSeen acc: %.2f%% Unseen acc: %.2f%%, Harmonic mean: %.2f%%\n' % (
                                         gzsl_seen_acc * 100, gzsl_unseen_acc * 100, H * 100))
-                                time_3 = time.time()
-                                print('train cost: ' + str(time_2 - time_1))
-                                print('eval cost: ' + str(time_3 - time_2))
-                                print('total cost: ' + str(time_3 - time_1))
+                                time_e = time.time()
+                                print('total cost: ' + str(time_e - time_s))
         else:
-            # TODO: Constrained hyper-parameter tuning
+            # TODO: hyper-parameter tuning for constrained model
             pass
 
         return att, best_k0, best_k1, best_m, best_s, best_K
@@ -356,8 +351,7 @@ class Model(object):
         """
 
         if self.tuning:
-            att, k_0, k_1, m, s, K = self.hyperparameter_tuning(constrained=True)
-
+            att, k_0, k_1, m, s, K = self.hyperparameter_tuning(constrained=False)
             dataloader = data_loader(self.datapath, self.dataset, self.side_info, False)
         else:
             dataloader = data_loader(self.datapath, self.dataset, self.side_info, False)
@@ -387,7 +381,7 @@ class Model(object):
         ### PPD parameter estimation ###
         Sig_s, mu_s, v_s, class_id, _ = self.bayesian_cls_train(xtrain, ytrain, dataloader.unseenclasses, att, k_0=k_0,
                                                                 k_1=k_1, m=m, \
-                                                                s=s, K=K, pca_dim=self.pca_dim, tuning=self.tuning)
+                                                                s=s, K=K, pca_dim=self.pca_dim, tuning=False)
 
         ### Prediction phase ###
         ypred_unseen, prob_mat_unseen = self.bayesian_cls_evaluate(xtest_unseen, Sig_s, mu_s, v_s, class_id)

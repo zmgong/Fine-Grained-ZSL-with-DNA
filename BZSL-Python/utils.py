@@ -1,7 +1,11 @@
+import math
+import random
+
 import numpy as np
 import scipy.io as sio
 from scipy.linalg import eigh
 import os
+from sklearn.model_selection import train_test_split
 
 """Data loading part"""
 
@@ -50,16 +54,13 @@ class data_loader(object):
                 self.side_info = splits_mat['att_dna']
 
     def data_split(self):
-
-        train_idx = self.trainval_loc
-        test_seen_idx = self.test_seen_loc
-        test_unseen_idx = self.test_unseen_loc
-
         if self.tuning:
-            train_idx, test_seen_idx = split_loc_by_ratio(self.train_loc)
-            # test_seen_idx = self.test_loc
+            train_idx, test_seen_idx = crossvalind_holdout(self.labels, self.train_loc, 0.2)
             test_unseen_idx = self.val_unseen_loc
-
+        else:
+            train_idx = self.trainval_loc
+            test_seen_idx = self.test_seen_loc
+            test_unseen_idx = self.test_unseen_loc
         xtrain = self.features[train_idx]
         ytrain = self.labels[train_idx]
         xtest_seen = self.features[test_seen_idx]
@@ -130,7 +131,29 @@ def apply_pca(x_tr, x_ts_s, x_ts_us, pca_dim):
     return x_tr, x_ts_s, x_ts_us
 
 
-def split_loc_by_ratio(loc_index, ratio=0.17241633):
+def crossvalind_holdout(labels, idxs, ratio=0.2):
+    # Shuffle the index
+    random.seed(42)
+    random.shuffle(idxs)
+    Y = labels[idxs]
+    unique_Y, count = np.unique(Y, return_counts=True)
+    count = dict(zip(unique_Y, count))
+    train = []
+    test = []
+    for cls in unique_Y:
+        threshold = math.ceil(ratio * count[cls])
+        current_count = 0
+        for idx, i in enumerate(Y):
+            if i == cls:
+                if current_count < threshold:
+                    test.append(idxs[idx])
+                else:
+                    train.append(idxs[idx])
+                current_count += 1
+    return train, test
+
+
+def split_loc_by_ratio(loc_index, ratio=0.2):
     n = int(len(loc_index) * ratio)
     np.random.shuffle(loc_index)
     test_loc = loc_index[0:n]

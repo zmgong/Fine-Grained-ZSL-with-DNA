@@ -45,10 +45,10 @@
 %     'prior_cov', psi, 'kappa_0', k_0, 'kappa_1', k_1, 'cov_shape', m, 'pca', 500);
 
 clear all;
-%clc;
+clc;
 
 datapath = '../data/';
-dataset = 'INSECT'; %  {'INSECT', 'CUB_DNA'}
+dataset = 'INSECT'; %  {'INSECT', 'CUB'}
 
 fname1=[datapath, dataset, '/res101.mat'];
 fname2=[datapath, dataset, '/att_splits.mat'];
@@ -79,7 +79,7 @@ model_version = 'unconstrained'; % DO NOT change, please!
 side_info = 'dna'; % one of {'original', 'w2v', 'dna'}
 pca_dim = 500;
 
-[att, K, k_0, k_1, m, s] = load_tuned_params(fname2, dataset, side_info);
+% [att, K, k_0, k_1, m, s] = load_tuned_params(fname2, dataset, side_info);
 
 % Splitting the data into train and test in accordance with the common proposed
 % split used in ZSL benchmarking
