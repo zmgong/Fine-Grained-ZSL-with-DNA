@@ -11,7 +11,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 
 from CNN import Model
-
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def load_data():
     datapath = r'../data'
@@ -114,8 +114,8 @@ def load_data():
     X_train, X_test, y_train, y_test = train_test_split(trainX, labelY, test_size=0.2, random_state=42)
 
 
-
-    return X_train, X_test, y_train, y_test, torch.Tensor(allX)
+    total_number_of_classes = len(np.unique(labels))
+    return X_train, X_test, y_train, y_test, torch.Tensor(allX), total_number_of_classes
 
 
 def train_and_eval(model, trainloader, testloader):
@@ -126,13 +126,13 @@ def train_and_eval(model, trainloader, testloader):
         running_loss = 0.0
         for i, data in enumerate(trainloader, 0):
             # get the inputs; data is a list of [inputs, labels]
-            inputs, labels = data
+            inputs, labels = data[0].to(device), data[1].type(torch.LongTensor).to(device)
             # zero the parameter gradients
             optimizer.zero_grad()
 
             # forward + backward + optimize
             outputs, _ = model(inputs)
-            loss = criterion(outputs, labels.type(torch.LongTensor))
+            loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
 
@@ -143,7 +143,7 @@ def train_and_eval(model, trainloader, testloader):
                 total = 0
                 with torch.no_grad():
                     for data in testloader:
-                        inputs, labels = data
+                        inputs, labels = data[0].to(device), data[1].type(torch.LongTensor).to(device)
                         labels = labels.int()
                         # calculate outputs by running images through the network
                         outputs, _ = model(inputs)
@@ -152,8 +152,6 @@ def train_and_eval(model, trainloader, testloader):
                         predicted = predicted.int()
                         total += labels.size(0)
                         correct += (predicted == labels).sum().item()
-
-
                 print("Epoch: " + str(epoch) + " ||Iteration: " + str(i) + "|| loss: " + str(running_loss / 100) + "|| Accuracy: " + str(correct/total))
                 running_loss = 0
 
@@ -174,24 +172,24 @@ def construct_dataloader(X_train, X_test, y_train, y_test, batch_size):
     return train_dataloader, test_dataloader
 
 
-def get_feature(model, all_X):
-    features = None
+def get_embedding(model, all_X):
+    embedding = None
     with torch.no_grad():
         for inputs in all_X:
-            _, feature = model(torch.unsqueeze(inputs, 0))
-            if features is None:
-                features = feature
+            _, feature = model(torch.unsqueeze(inputs.to(device), 0))
+            if embedding is None:
+                embedding = feature
             else:
-                features = torch.cat((features, feature), 0)
-
-    return features
+                embedding = torch.cat((embedding, feature), 0)
+    embedding = embedding.to('cpu')
+    return embedding
 
 
 if __name__ == '__main__':
-    X_train, X_test, y_train, y_test, all_X = load_data()
+    X_train, X_test, y_train, y_test, all_X, total_number_of_classes = load_data()
     trainloader, testloader = construct_dataloader(X_train, X_test, y_train, y_test, 32)
 
-    model = Model(1, 1213)
+    model = Model(1, total_number_of_classes).to(device)
     train_and_eval(model, trainloader, testloader)
-    dna_embeddings = get_feature(model, all_X)
-    np.savetxt("nips_cnn_embeddings_500_5e_adam_aligned.csv", dna_embeddings, delimiter=",")
+    dna_embeddings = get_embedding(model, all_X)
+    np.savetxt("../data/INSECT/insect_dna_embedding.csv", dna_embeddings, delimiter=",")

@@ -4,7 +4,7 @@ from opt_einsum.backends import torch
 
 
 class Model(nn.Module):
-    def __init__(self, in_feature, out_feature):
+    def __init__(self, in_feature, out_feature, dim=4048, embedding_dim=500):
         super().__init__()
         self.pool = nn.MaxPool2d((3, 1))
 
@@ -19,8 +19,8 @@ class Model(nn.Module):
 
         self.flat = nn.Flatten(1, 3)
 
-        self.lin1 = nn.Linear(4048, 500)
-        self.lin2 = nn.Linear(500, out_feature)
+        self.lin1 = nn.Linear(dim, embedding_dim)
+        self.lin2 = nn.Linear(embedding_dim, out_feature)
 
     def forward(self, x):
         x = self.conv1(x.permute(0, 3, 1, 2))
