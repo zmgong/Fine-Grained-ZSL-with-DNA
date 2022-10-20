@@ -340,7 +340,7 @@ class Model(object):
                                 time_e = time.time()
                                 print('total cost: ' + str(time_e - time_s))
         else:
-            # TODO: hyper-parameter tuning for constrained model
+            # TODO: hyper-parameter tuning for constrained model, ignored for now.
             pass
 
         return att, best_k0, best_k1, best_m, best_s, best_K

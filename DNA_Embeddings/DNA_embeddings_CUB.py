@@ -142,9 +142,9 @@ def load_data():
 
 def train_and_eval(model, trainloader, testloader):
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
     print('start training')
-    for epoch in range(3):  # loop over the dataset multiple times
+    for epoch in range(5):  # loop over the dataset multiple times
         running_loss = 0.0
         for i, data in enumerate(trainloader, 0):
             # get the inputs; data is a list of [inputs, labels]
@@ -215,4 +215,4 @@ if __name__ == '__main__':
     model = Model(1, total_number_of_classes, 9504, embedding_dim=400).to(device)
     train_and_eval(model, trainloader, testloader)
     dna_embeddings = get_embedding(model, all_X)
-    np.savetxt("../data/CUDA/cub_dna_embedding.csv", dna_embeddings, delimiter=",")
+    np.savetxt("../data/CUB/dna_embedding.csv", dna_embeddings, delimiter=",")
