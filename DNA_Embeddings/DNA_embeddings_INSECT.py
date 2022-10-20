@@ -13,6 +13,7 @@ from CNN import Model
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 def load_data():
     datapath = r'../data'
     dataset = 'INSECT'
@@ -48,8 +49,7 @@ def load_data():
 
     # Calculating sequence count for each species
     cl = len(np.unique(species))
-    seq_len = np.zeros((cl))
-    seq_cnt = np.zeros((cl))
+    seq_cnt = np.zeros(cl)
     for i in range(N):
         k = labels[i] - 1  # Accounting for Matlab labeling
         seq_cnt[k] += 1
@@ -60,8 +60,6 @@ def load_data():
     sl = 658
     allX = np.zeros((N, sl, 5))
     for i in range(N):
-        Nt = len(sequence_of_int[i])
-
         for j in range(sl):
             if (len(sequence_of_int[i]) > j):
                 k = sequence_of_int[i][j] - 1
@@ -75,19 +73,17 @@ def load_data():
     labelY = np.zeros(N)
 
     Nc = -1
-    clas_cnt = np.zeros((cl))
+    class_cnt = np.zeros(cl)
     for i in range(N):
-        Nt = len(sequence_of_int[i])
         k = labels[i] - 1
-        clas_cnt[k] += 1
+        class_cnt[k] += 1
         itl = i + 1
-        if (seq_cnt[k] >= 10 and clas_cnt[k] <= 50 and itl in train_loc[
-            0]):  # Note that samples from training set are only used
+        if seq_cnt[k] >= 10 and class_cnt[k] <= 50 and itl in train_loc[0]:  # Note that samples from training set are only used
             Nc = Nc + 1
             for j in range(sl):
-                if (len(sequence_of_int[i]) > j):
+                if len(sequence_of_int[i]) > j:
                     k = sequence_of_int[i][j] - 1
-                    if (k > 4):
+                    if k > 4:
                         k = 4
                     trainX[Nc][j][k] = 1.0
 
@@ -112,7 +108,6 @@ def load_data():
     allX = np.expand_dims(allX, axis=3)
 
     X_train, X_test, y_train, y_test = train_test_split(trainX, labelY, test_size=0.2, random_state=42)
-
 
     total_number_of_classes = len(np.unique(labels))
     return X_train, X_test, y_train, y_test, torch.Tensor(allX), total_number_of_classes
@@ -152,7 +147,8 @@ def train_and_eval(model, trainloader, testloader):
                         predicted = predicted.int()
                         total += labels.size(0)
                         correct += (predicted == labels).sum().item()
-                print("Epoch: " + str(epoch) + " ||Iteration: " + str(i) + "|| loss: " + str(running_loss / 100) + "|| Accuracy: " + str(correct/total))
+                print("Epoch: " + str(epoch) + " ||Iteration: " + str(i) + "|| loss: " + str(
+                    running_loss / 100) + "|| Accuracy: " + str(correct / total))
                 running_loss = 0
 
     print('Finished Training')
@@ -164,10 +160,10 @@ def construct_dataloader(X_train, X_test, y_train, y_test, batch_size):
     y_train = torch.Tensor(y_train)
     y_test = torch.Tensor(y_test)
 
-    train_dataset = TensorDataset(X_train,y_train)
+    train_dataset = TensorDataset(X_train, y_train)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
 
-    test_dataset = TensorDataset(X_test,y_test)
+    test_dataset = TensorDataset(X_test, y_test)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
     return train_dataloader, test_dataloader
 

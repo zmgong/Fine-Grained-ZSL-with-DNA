@@ -380,7 +380,7 @@ class Model(object):
         time_s = time.time()
         ### PPD parameter estimation ###
         Sig_s, mu_s, v_s, class_id, _ = self.bayesian_cls_train(xtrain, ytrain, dataloader.unseenclasses, att, k_0=k_0,
-                                                                k_1=k_1, m=m, \
+                                                                k_1=k_1, m=m,
                                                                 s=s, K=K, pca_dim=self.pca_dim, tuning=False)
 
         ### Prediction phase ###
