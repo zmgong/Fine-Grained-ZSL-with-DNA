@@ -1,16 +1,16 @@
-import scipy.io as sio
 import os
-import torch
-from tensorflow.keras.preprocessing.text import Tokenizer
+
 import numpy as np
-from sklearn.model_selection import train_test_split
+import scipy.io as sio
+import torch
 import torch.nn as nn
-import torch.nn.functional as F
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.preprocessing.text import Tokenizer
 from torch import optim
 from torch.utils.data import TensorDataset, DataLoader
-from tqdm import tqdm
 
 from CNN import Model
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def load_data():
