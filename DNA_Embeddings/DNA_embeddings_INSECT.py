@@ -9,7 +9,7 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from torch import optim
 from torch.utils.data import TensorDataset, DataLoader
 
-from CNN import Model
+from CNN import Model, train_and_eval
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -19,7 +19,9 @@ def load_data():
     dataset = 'INSECT'
     x = sio.loadmat(os.path.join(datapath, dataset, 'res101.mat'))
     x2 = sio.loadmat(os.path.join(datapath, dataset, 'att_splits.mat'))
+
     barcodes = x['nucleotides_aligned'].T
+
     species = x['labels']
     train_loc = x2['trainval_loc']
 
@@ -113,45 +115,7 @@ def load_data():
     return X_train, X_test, y_train, y_test, torch.Tensor(allX), total_number_of_classes
 
 
-def train_and_eval(model, trainloader, testloader):
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-    print('start training')
-    for epoch in range(5):  # loop over the dataset multiple times
-        running_loss = 0.0
-        for i, data in enumerate(trainloader, 0):
-            # get the inputs; data is a list of [inputs, labels]
-            inputs, labels = data[0].to(device), data[1].type(torch.LongTensor).to(device)
-            # zero the parameter gradients
-            optimizer.zero_grad()
 
-            # forward + backward + optimize
-            outputs, _ = model(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-
-            # print statistics
-            running_loss += loss.item()
-            if i % 100 == 0:
-                correct = 0
-                total = 0
-                with torch.no_grad():
-                    for data in testloader:
-                        inputs, labels = data[0].to(device), data[1].type(torch.LongTensor).to(device)
-                        labels = labels.int()
-                        # calculate outputs by running images through the network
-                        outputs, _ = model(inputs)
-                        # the class with the highest energy is what we choose as prediction
-                        _, predicted = torch.max(outputs.data, 1)
-                        predicted = predicted.int()
-                        total += labels.size(0)
-                        correct += (predicted == labels).sum().item()
-                print("Epoch: " + str(epoch) + " ||Iteration: " + str(i) + "|| loss: " + str(
-                    running_loss / 100) + "|| Accuracy: " + str(correct / total))
-                running_loss = 0
-
-    print('Finished Training')
 
 
 def construct_dataloader(X_train, X_test, y_train, y_test, batch_size):
@@ -186,6 +150,6 @@ if __name__ == '__main__':
     trainloader, testloader = construct_dataloader(X_train, X_test, y_train, y_test, 32)
 
     model = Model(1, total_number_of_classes).to(device)
-    train_and_eval(model, trainloader, testloader)
+    train_and_eval(model, trainloader, testloader, device=device)
     dna_embeddings = get_embedding(model, all_X)
     np.savetxt("../data/INSECT/dna_embedding.csv", dna_embeddings, delimiter=",")

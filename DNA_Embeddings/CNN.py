@@ -1,6 +1,9 @@
 import torch.nn as nn
 import torch.nn.functional as F
 from opt_einsum.backends import torch
+from torch import optim
+import torch
+import numpy as np
 
 
 class Model(nn.Module):
@@ -22,12 +25,60 @@ class Model(nn.Module):
         self.lin1 = nn.Linear(dim, embedding_dim)
         self.lin2 = nn.Linear(embedding_dim, out_feature)
 
+        self.dropout = nn.Dropout(0.1)
+
     def forward(self, x):
-        x = self.conv1(x.permute(0, 3, 1, 2))
-        x = self.pool(self.bn1(F.relu(x)))
-        x = self.pool(self.bn2(F.relu(self.conv2(x))))
-        x = self.pool(self.bn3(F.relu(self.conv3(x))))
+        x = x.permute(0, 3, 1, 2)
+
+        x = self.pool(self.bn1(F.relu(self.dropout(self.conv1(x)))))
+        x = self.pool(self.bn2(F.relu(self.dropout(self.conv2(x)))))
+        x = self.pool(self.bn3(F.relu(self.dropout(self.conv3(x)))))
         x = self.flat(x)
-        feature = self.lin1(x)
-        x = self.lin2(feature)
+        x = self.dropout(self.lin1(x))
+        feature = x
+        x = self.lin2(x)
         return x, feature
+
+def train_and_eval(model, trainloader, testloader, device):
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    drop = 0.2
+    epochs_drop = 2.0
+    print('start training')
+    for epoch in range(5):  # loop over the dataset multiple times
+        running_loss = 0.0
+        for i, data in enumerate(trainloader, 0):
+            # get the inputs; data is a list of [inputs, labels]
+            inputs, labels = data[0].to(device), data[1].type(torch.LongTensor).to(device)
+            # zero the parameter gradients
+            optimizer.zero_grad()
+
+            # forward + backward + optimize
+            outputs, _ = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            for g in optimizer.param_groups:
+                g['lr'] = 0.001 * np.power(drop, np.floor((1+epoch)/epochs_drop))
+            # print statistics
+            running_loss += loss.item()
+            if i % 100 == 0:
+                correct = 0
+                total = 0
+                with torch.no_grad():
+                    for data in testloader:
+                        inputs, labels = data[0].to(device), data[1].type(torch.LongTensor).to(device)
+                        labels = labels.int()
+                        # calculate outputs by running images through the network
+                        outputs, _ = model(inputs)
+                        # the class with the highest energy is what we choose as prediction
+                        _, predicted = torch.max(outputs.data, 1)
+                        predicted = predicted.int()
+                        total += labels.size(0)
+                        correct += (predicted == labels).sum().item()
+                if i > 1:
+                    print("Epoch: " + str(epoch) + " ||Iteration: " + str(i) + "|| loss: " + str(
+                        running_loss / 100) + "|| Val Accuracy: " + str(correct / total))
+                running_loss = 0
+
+    print('Finished Training')
