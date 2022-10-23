@@ -34,7 +34,6 @@ def load_data():
         if len(barcodes[i][0][0]) > 0:
             bcodes.append(barcodes[i][0][0])
             labels.append(species[i][0])
-
     # Can be optimize, write function to avoid using tensorflow.
     tokenizer = Tokenizer(char_level=True)
     tokenizer.fit_on_texts(bcodes)
@@ -80,7 +79,8 @@ def load_data():
         k = labels[i] - 1
         class_cnt[k] += 1
         itl = i + 1
-        if seq_cnt[k] >= 10 and class_cnt[k] <= 50 and itl in train_loc[0]:  # Note that samples from training set are only used
+        if seq_cnt[k] >= 10 and class_cnt[k] <= 50 and itl in train_loc[
+            0]:  # Note that samples from training set are only used
             Nc = Nc + 1
             for j in range(sl):
                 if len(sequence_of_int[i]) > j:
@@ -95,6 +95,7 @@ def load_data():
 
     trainX = trainX[0:Nc]
     trainY = trainY[0:Nc]
+    all_Y = labelY
     labelY = labelY[0:Nc]
 
     # To make sure the training data does not include any unseen class nucleotides
@@ -112,10 +113,7 @@ def load_data():
     X_train, X_test, y_train, y_test = train_test_split(trainX, labelY, test_size=0.2, random_state=42)
 
     total_number_of_classes = len(np.unique(labels))
-    return X_train, X_test, y_train, y_test, torch.Tensor(allX), total_number_of_classes
-
-
-
+    return X_train, X_test, y_train, y_test, torch.Tensor(allX), species, total_number_of_classes
 
 
 def construct_dataloader(X_train, X_test, y_train, y_test, batch_size):
@@ -146,10 +144,22 @@ def get_embedding(model, all_X):
 
 
 if __name__ == '__main__':
-    X_train, X_test, y_train, y_test, all_X, total_number_of_classes = load_data()
+    X_train, X_test, y_train, y_test, all_X, species, total_number_of_classes = load_data()
     trainloader, testloader = construct_dataloader(X_train, X_test, y_train, y_test, 32)
-
     model = Model(1, total_number_of_classes).to(device)
     train_and_eval(model, trainloader, testloader, device=device)
     dna_embeddings = get_embedding(model, all_X)
-    np.savetxt("../data/INSECT/dna_embedding.csv", dna_embeddings, delimiter=",")
+    dict_emb = {}
+    for index, label in enumerate(species):
+
+        if str(label[0]) not in dict_emb.keys():
+            dict_emb[str(label[0])] = []
+        dict_emb[str(label[0])].append(np.array(dna_embeddings[index]))
+    all_label = np.unique(species)
+    class_embed = []
+    for i in all_label:
+        class_embed.append(np.sum(dict_emb[str(i)], axis=0) / len(dict_emb[str(i)]))
+    class_embed = np.array(class_embed, dtype=object)
+    class_embed = class_embed.T
+
+    np.savetxt("../data/INSECT/dna_embedding.csv", class_embed, delimiter=",")

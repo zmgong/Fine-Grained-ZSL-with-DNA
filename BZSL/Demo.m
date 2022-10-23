@@ -79,7 +79,7 @@ model_version = 'unconstrained'; % DO NOT change, please!
 side_info = 'dna'; % one of {'original', 'w2v', 'dna'}
 pca_dim = 500;
 
-% [att, K, k_0, k_1, m, s] = load_tuned_params(fname2, dataset, side_info);
+[att, K, k_0, k_1, m, s] = load_tuned_params(fname2, dataset, side_info);
 
 % Splitting the data into train and test in accordance with the common proposed
 % split used in ZSL benchmarking

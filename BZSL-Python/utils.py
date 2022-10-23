@@ -26,8 +26,8 @@ class data_loader(object):
         path = os.path.join(self.datapath, self.dataset, 'res101.mat')
         data_mat = sio.loadmat(path)
         self.features = data_mat['features'].T
-        self.labels = data_mat['labels'].ravel() - 1
 
+        self.labels = data_mat['labels'].ravel() - 1
         path = os.path.join(self.datapath, self.dataset, 'att_splits.mat')
         splits_mat = sio.loadmat(path)
 
@@ -46,12 +46,15 @@ class data_loader(object):
             print(
                 'Invalid side information source for INSECT data! There is only one side information source for INSECT dataset: "dna". Model will continue using DNA as side information')
 
-        self.side_info = splits_mat['att']
+        self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding.csv'), delimiter=',')
         if self.dataset == 'CUB':
             if self.side_info_source == 'w2v':
                 self.side_info = splits_mat['att_w2v']
             else:
-                self.side_info = splits_mat['att_dna']
+                # self.side_info = splits_mat['att_dna']
+                self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding.csv'), delimiter=',')
+
+
 
     def data_split(self):
         if self.tuning:

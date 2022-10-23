@@ -25,6 +25,7 @@ def load_data():
     bird_species = x['species'][0]
     cub_barcodes = x2['nucleotides_aligned'][0]
     c_labels = x2['species'][0]
+
     # Number of training samples and entire data
     N = len(barcodes)
 
@@ -97,7 +98,6 @@ def load_data():
     N_cub = len(cub_bcodes)
     allX = np.zeros((N_cub, sl, 5))
     for i in range(N_cub):
-
         for j in range(sl):
             if len(sequence_of_int_cub[i]) > j:
                 k = sequence_of_int_cub[i][j] - 1
@@ -137,7 +137,7 @@ def load_data():
 
     X_train, X_test, y_train, y_test = train_test_split(trainX, labelY, test_size=0.2, random_state=42)
     total_number_of_classes = len(np.unique(labels))
-    return X_train, X_test, y_train, y_test, torch.Tensor(allX), total_number_of_classes
+    return X_train, X_test, y_train, y_test, torch.Tensor(allX), c_labels_, total_number_of_classes
 
 
 def construct_dataloader(X_train, X_test, y_train, y_test, batch_size):
@@ -168,10 +168,22 @@ def get_embedding(model, all_X):
 
 
 if __name__ == '__main__':
-    X_train, X_test, y_train, y_test, all_X, total_number_of_classes = load_data()
+    X_train, X_test, y_train, y_test, all_X, species, total_number_of_classes = load_data()
     trainloader, testloader = construct_dataloader(X_train, X_test, y_train, y_test, 32)
-
     model = Model(1, total_number_of_classes, 9504, embedding_dim=400).to(device)
     train_and_eval(model, trainloader, testloader, device=device)
     dna_embeddings = get_embedding(model, all_X)
-    np.savetxt("../data/CUB/dna_embedding.csv", dna_embeddings, delimiter=",")
+
+    dict_emb = {}
+    for index, label in enumerate(species):
+        if str(label) not in dict_emb.keys():
+            dict_emb[str(label)] = []
+        dict_emb[str(label)].append(np.array(dna_embeddings[index]))
+    all_label = np.unique(species)
+    class_embed = []
+    for i in all_label:
+        class_embed.append(np.sum(dict_emb[str(i)], axis=0) / len(dict_emb[str(i)]))
+    class_embed = np.array(class_embed, dtype=object)
+    class_embed = class_embed.T
+
+    np.savetxt("../data/CUB/dna_embedding.csv", class_embed, delimiter=",")

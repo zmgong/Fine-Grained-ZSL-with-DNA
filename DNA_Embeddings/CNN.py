@@ -25,27 +25,29 @@ class Model(nn.Module):
         self.lin1 = nn.Linear(dim, embedding_dim)
         self.lin2 = nn.Linear(embedding_dim, out_feature)
 
+        self.tanh = nn.Tanh()
+
         self.dropout = nn.Dropout(0.1)
 
     def forward(self, x):
         x = x.permute(0, 3, 1, 2)
 
-        x = self.pool(self.bn1(F.relu(self.dropout(self.conv1(x)))))
-        x = self.pool(self.bn2(F.relu(self.dropout(self.conv2(x)))))
-        x = self.pool(self.bn3(F.relu(self.dropout(self.conv3(x)))))
+        x = self.pool(self.bn1(F.relu(self.conv1(x))))
+        x = self.pool(self.bn2(F.relu(self.conv2(x))))
+        x = self.pool(self.bn3(F.relu(self.conv3(x))))
         x = self.flat(x)
-        x = self.dropout(self.lin1(x))
+        x = F.relu(self.lin1(x))
         feature = x
         x = self.lin2(x)
         return x, feature
 
 def train_and_eval(model, trainloader, testloader, device):
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-    drop = 0.2
+    optimizer = optim.Adam(model.parameters(), lr=0.000001)
+    drop = 0.5
     epochs_drop = 2.0
     print('start training')
-    for epoch in range(5):  # loop over the dataset multiple times
+    for epoch in range(10):  # loop over the dataset multiple times
         running_loss = 0.0
         for i, data in enumerate(trainloader, 0):
             # get the inputs; data is a list of [inputs, labels]
