@@ -32,8 +32,8 @@ class Model(nn.Module):
 
     def forward(self, x):
         x = x.permute(0, 3, 1, 2)
-
-        x = self.pool(self.bn1(F.relu(self.conv1(x))))
+        x = self.conv1(x)
+        x = self.pool(self.bn1(F.relu(x)))
         x = self.pool(self.bn2(F.relu(self.conv2(x))))
         x = self.pool(self.bn3(F.relu(self.conv3(x))))
         x = self.flat(x)
@@ -64,8 +64,20 @@ def train_and_eval(model, trainloader, testloader, device, lr=0.001, n_epoch=5):
             # print statistics
             running_loss += loss.item()
             if i % 100 == 0:
-
                 with torch.no_grad():
+                    train_correct = 0
+                    train_total = 0
+                    for data in trainloader:
+                        inputs, labels = data[0].to(device), data[1].type(torch.LongTensor).to(device)
+                        labels = labels.int()
+                        # calculate outputs by running images through the network
+                        outputs, _ = model(inputs)
+                        # the class with the highest energy is what we choose as prediction
+                        _, predicted = torch.max(outputs.data, 1)
+                        predicted = predicted.int()
+                        train_total += labels.size(0)
+                        train_correct += (predicted == labels).sum().item()
+
                     correct = 0
                     total = 0
                     for data in testloader:
@@ -80,7 +92,7 @@ def train_and_eval(model, trainloader, testloader, device, lr=0.001, n_epoch=5):
                         correct += (predicted == labels).sum().item()
                 if i > 1:
                     print("Epoch: " + str(epoch) + " ||Iteration: " + str(i) + "|| loss: " + str(
-                        running_loss / 100) + "|| Val Accuracy: " + str(correct / total))
+                        running_loss / 100) + "|| Accuracy: " + str(train_correct / train_total) + "|| Val Accuracy: " + str(correct / total))
                 running_loss = 0
         scheduler.step()
 
