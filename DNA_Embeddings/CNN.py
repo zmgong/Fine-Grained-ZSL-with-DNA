@@ -4,6 +4,7 @@ from opt_einsum.backends import torch
 from torch import optim
 import torch
 import numpy as np
+from torch.optim.lr_scheduler import StepLR
 
 
 class Model(nn.Module):
@@ -41,13 +42,13 @@ class Model(nn.Module):
         x = self.lin2(x)
         return x, feature
 
-def train_and_eval(model, trainloader, testloader, device):
+
+def train_and_eval(model, trainloader, testloader, device, lr=0.001, n_epoch=5):
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.000001)
-    drop = 0.5
-    epochs_drop = 2.0
+    optimizer = optim.Adam(model.parameters(), lr=lr)  # best 0.00001
+    scheduler = StepLR(optimizer, step_size=1, gamma=0.5)
     print('start training')
-    for epoch in range(10):  # loop over the dataset multiple times
+    for epoch in range(n_epoch):  # loop over the dataset multiple times
         running_loss = 0.0
         for i, data in enumerate(trainloader, 0):
             # get the inputs; data is a list of [inputs, labels]
@@ -60,14 +61,13 @@ def train_and_eval(model, trainloader, testloader, device):
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            for g in optimizer.param_groups:
-                g['lr'] = 0.001 * np.power(drop, np.floor((1+epoch)/epochs_drop))
             # print statistics
             running_loss += loss.item()
             if i % 100 == 0:
-                correct = 0
-                total = 0
+
                 with torch.no_grad():
+                    correct = 0
+                    total = 0
                     for data in testloader:
                         inputs, labels = data[0].to(device), data[1].type(torch.LongTensor).to(device)
                         labels = labels.int()
@@ -82,5 +82,6 @@ def train_and_eval(model, trainloader, testloader, device):
                     print("Epoch: " + str(epoch) + " ||Iteration: " + str(i) + "|| loss: " + str(
                         running_loss / 100) + "|| Val Accuracy: " + str(correct / total))
                 running_loss = 0
+        scheduler.step()
 
     print('Finished Training')
