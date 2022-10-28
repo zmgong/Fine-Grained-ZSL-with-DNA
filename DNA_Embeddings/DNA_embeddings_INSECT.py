@@ -163,3 +163,4 @@ if __name__ == '__main__':
     class_embed = class_embed.T
 
     np.savetxt("../data/INSECT/dna_embedding.csv", class_embed, delimiter=",")
+    print('DNA embeddings is saved.')
