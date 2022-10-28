@@ -5,6 +5,7 @@ from torch import optim
 import torch
 import numpy as np
 from torch.optim.lr_scheduler import StepLR
+from tqdm import tqdm
 
 
 class Model(nn.Module):
@@ -28,25 +29,43 @@ class Model(nn.Module):
 
         self.tanh = nn.Tanh()
 
-        self.dropout = nn.Dropout(0.1)
+        self.dropout = nn.Dropout(0.2)
 
     def forward(self, x):
         x = x.permute(0, 3, 1, 2)
-        x = self.conv1(x)
+        x = self.dropout(self.conv1(x))
         x = self.pool(self.bn1(F.relu(x)))
-        x = self.pool(self.bn2(F.relu(self.conv2(x))))
-        x = self.pool(self.bn3(F.relu(self.conv3(x))))
+        x = self.pool(self.bn2(F.relu(self.dropout(self.conv2(x)))))
+        x = self.pool(self.bn3(F.relu(self.dropout(self.conv3(x)))))
         x = self.flat(x)
-        x = F.relu(self.lin1(x))
+        x = self.tanh(self.dropout(self.lin1(x)))
         feature = x
         x = self.lin2(x)
         return x, feature
 
 
-def train_and_eval(model, trainloader, testloader, device, lr=0.001, n_epoch=5):
+# def categorical_cross_entropy(outputs, target):
+#     m = nn.Softmax(dim=1)
+#     loss = nn.NLLLoss()(torch.log(m(outputs)), target)
+#     # print(torch.log(m(outputs)).shape)
+#     # print(target.shape)
+#     # print(loss)
+#     return loss
+
+def categorical_cross_entropy(outputs, target, num_classes=1213):
+    m = nn.Softmax(dim=1)
+    pred_label = torch.log(m(outputs))
+    target_label = F.one_hot(target, num_classes=num_classes)
+    loss = (-pred_label * target_label).sum(dim=1).mean()
+    return loss
+
+
+def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12):
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=lr)  # best 0.00001
-    scheduler = StepLR(optimizer, step_size=1, gamma=0.5)
+    # criterion = categorical_cross_entropy()
+    # optimizer = optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+    scheduler = StepLR(optimizer, step_size=3, gamma=0.5)
     print('start training')
     for epoch in range(n_epoch):  # loop over the dataset multiple times
         running_loss = 0.0
@@ -58,7 +77,11 @@ def train_and_eval(model, trainloader, testloader, device, lr=0.001, n_epoch=5):
 
             # forward + backward + optimize
             outputs, _ = model(inputs)
-            loss = criterion(outputs, labels)
+            # print(outputs[0])
+            # print(labels.shape)
+            # exit()
+            # loss = criterion(outputs, labels)
+            loss = categorical_cross_entropy(outputs, labels)
             loss.backward()
             optimizer.step()
             # print statistics
@@ -92,7 +115,8 @@ def train_and_eval(model, trainloader, testloader, device, lr=0.001, n_epoch=5):
                         correct += (predicted == labels).sum().item()
                 if i > 1:
                     print("Epoch: " + str(epoch) + " ||Iteration: " + str(i) + "|| loss: " + str(
-                        running_loss / 100) + "|| Accuracy: " + str(train_correct / train_total) + "|| Val Accuracy: " + str(correct / total))
+                        running_loss / 100) + "|| Accuracy: " + str(
+                        train_correct / train_total) + "|| Val Accuracy: " + str(correct / total) + "|| lr: " + str(scheduler.get_last_lr()))
                 running_loss = 0
         scheduler.step()
 

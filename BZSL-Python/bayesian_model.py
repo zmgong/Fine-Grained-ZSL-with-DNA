@@ -326,6 +326,9 @@ class Model(object):
                                 acc_per_cls_s, acc_per_cls_us, gzsl_seen_acc, gzsl_unseen_acc, H = perf_calc_acc(
                                     ytest_seen, ytest_unseen,
                                     ypred_seen, ypred_unseen)
+                                print('\nCurrent parameters k0=%.2f, k1=%.2f, m=%d, s=%.1f, K=%d on %s dataset:' % (
+                                    k_0, k_1, m, ss, kk, self.dataset))
+                                print()
                                 if H > bestH:
                                     bestH = H
                                     best_k0 = k_0
