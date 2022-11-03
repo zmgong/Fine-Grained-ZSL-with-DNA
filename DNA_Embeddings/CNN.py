@@ -44,6 +44,14 @@ class Model(nn.Module):
         return x, feature
 
 
+# def categorical_cross_entropy(outputs, target):
+#     m = nn.Softmax(dim=1)
+#     loss = nn.NLLLoss()(torch.log(m(outputs)), target)
+#     # print(torch.log(m(outputs)).shape)
+#     # print(target.shape)
+#     # print(loss)
+#     return loss
+
 def categorical_cross_entropy(outputs, target, num_classes=1213):
     m = nn.Softmax(dim=1)
     pred_label = torch.log(m(outputs))
@@ -52,10 +60,12 @@ def categorical_cross_entropy(outputs, target, num_classes=1213):
     return loss
 
 
-def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=5):
+def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12):
+    criterion = nn.CrossEntropyLoss()
+    # criterion = categorical_cross_entropy()
     # optimizer = optim.Adam(model.parameters(), lr=lr)
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
-    scheduler = StepLR(optimizer, step_size=2, gamma=0.5)
+    scheduler = StepLR(optimizer, step_size=3, gamma=0.5)
     print('start training')
     for epoch in range(n_epoch):  # loop over the dataset multiple times
         running_loss = 0.0
