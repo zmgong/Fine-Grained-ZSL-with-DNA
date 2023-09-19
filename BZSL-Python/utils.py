@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 
 
 class data_loader(object):
-    def __init__(self, datapath, dataset, side_info='original', tuning=False):
+    def __init__(self, datapath, dataset, side_info='original', tuning=False, alignment=True):
 
         print("The current working directory is")
         print(os.getcwd())
@@ -19,6 +19,7 @@ class data_loader(object):
         self.dataset = dataset
         self.side_info_source = side_info
         self.tuning = tuning
+        self.alignment = alignment
 
         self.read_matdata()
 
@@ -26,6 +27,7 @@ class data_loader(object):
         path = os.path.join(self.datapath, self.dataset, 'res101.mat')
         data_mat = sio.loadmat(path)
         self.features = data_mat['features'].T
+        print('self.feature: ')
 
         self.labels = data_mat['labels'].ravel() - 1
         path = os.path.join(self.datapath, self.dataset, 'att_splits.mat')
@@ -45,14 +47,33 @@ class data_loader(object):
         if (self.dataset == 'INSECT') and (self.side_info_source != 'dna'):
             print(
                 'Invalid side information source for INSECT data! There is only one side information source for INSECT dataset: "dna". Model will continue using DNA as side information')
+        if self.dataset == 'INSECT':
+            if self.alignment is True:
+                print("INSECT: Aligned")
+                self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding.csv'), delimiter=',')
+            else:
+                print("INSECT: Not aligned")
+                self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_no_alignment.csv'), delimiter=',')
 
-        self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding.csv'), delimiter=',')
+        # Origin
+        # self.side_info = splits_mat['att']
+        # if self.dataset=='CUB':
+        #     if self.side_info_source=='w2v':
+        #         self.side_info = splits_mat['att_w2v']
+        #     else:
+        #         self.side_info = splits_mat['att_dna']
+
+        # Modified
         if self.dataset == 'CUB':
             if self.side_info_source == 'w2v':
                 self.side_info = splits_mat['att_w2v']
             else:
-                # self.side_info = splits_mat['att_dna']
-                self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding.csv'), delimiter=',')
+                if self.alignment is True:
+                    print("CUB: Aligned")
+                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding.csv'), delimiter=',')
+                else:
+                    print("CUB: Not aligned")
+                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_no_alignment.csv'), delimiter=',')
 
 
 

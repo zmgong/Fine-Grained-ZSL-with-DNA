@@ -17,6 +17,7 @@ class Model(object):
         self.side_info = opt.side_info
         self.pca_dim = opt.pca_dim
         self.tuning = opt.tuning
+        self.alignment = opt.alignment
 
     ### Claculating class mean and covariance priors ###
     def calculate_priors(self, xtrain, ytrain, model_v='unconstrained'):
@@ -243,9 +244,9 @@ class Model(object):
 
     def bayesian_cls_train(self, x_tr, y_tr, unseenclasses, att, k_0=0.1, k_1=10, m=5 * 500, mu_0=0, s=1, Sigma_0=0,
                            K=2, pca_dim=0, tuning=False):
-        us_classes = unseenclasses
-        s_classes = np.unique(y_tr)
 
+        s_classes = np.unique(y_tr)
+        us_classes = unseenclasses
         # Attributes of seen and unseen classes
         att_unseen = att[:, us_classes].T
         att_seen = att[:, s_classes].T
@@ -266,6 +267,7 @@ class Model(object):
         dataloader = data_loader(self.datapath, self.dataset, self.side_info, self.tuning)
 
         # load attribute
+
         att, _, _, _, _, _ = dataloader.load_tuned_params()
 
         xtrain, ytrain, xtest_seen, ytest_seen, xtest_unseen, ytest_unseen = dataloader.data_split()
@@ -355,10 +357,12 @@ class Model(object):
 
         if self.tuning:
             att, k_0, k_1, m, s, K = self.hyperparameter_tuning(constrained=False)
-            dataloader = data_loader(self.datapath, self.dataset, self.side_info, False)
+
+            dataloader = data_loader(self.datapath, self.dataset, self.side_info, False, alignment=self.alignment)
         else:
-            dataloader = data_loader(self.datapath, self.dataset, self.side_info, False)
+            dataloader = data_loader(self.datapath, self.dataset, self.side_info, False, alignment=self.alignment)
             att, k_0, k_1, m, s, K = dataloader.load_tuned_params()
+
 
         """
         To reproduce the results from paper please use the following function to laod the 
@@ -377,7 +381,8 @@ class Model(object):
         # att = dataloader.side_info
 
         xtrain, ytrain, xtest_seen, ytest_seen, xtest_unseen, ytest_unseen = dataloader.data_split()
-
+        print(att.shape)
+        exit()
         if self.pca_dim:
             xtrain, xtest_seen, xtest_unseen = apply_pca(xtrain, xtest_seen, xtest_unseen, self.pca_dim)
         time_s = time.time()
