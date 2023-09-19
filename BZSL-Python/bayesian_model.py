@@ -381,8 +381,6 @@ class Model(object):
         # att = dataloader.side_info
 
         xtrain, ytrain, xtest_seen, ytest_seen, xtest_unseen, ytest_unseen = dataloader.data_split()
-        print(att.shape)
-        exit()
         if self.pca_dim:
             xtrain, xtest_seen, xtest_unseen = apply_pca(xtrain, xtest_seen, xtest_unseen, self.pca_dim)
         time_s = time.time()
