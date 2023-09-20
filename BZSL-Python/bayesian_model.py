@@ -357,9 +357,9 @@ class Model(object):
 
         if self.tuning:
             att, k_0, k_1, m, s, K = self.hyperparameter_tuning(constrained=False)
-
             dataloader = data_loader(self.datapath, self.dataset, self.side_info, False, alignment=self.alignment)
         else:
+
             dataloader = data_loader(self.datapath, self.dataset, self.side_info, False, alignment=self.alignment)
             att, k_0, k_1, m, s, K = dataloader.load_tuned_params()
 

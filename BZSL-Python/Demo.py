@@ -7,8 +7,8 @@ parser.add_argument('--dataset', type=str, required=True)
 parser.add_argument('--side_info', default='original',type=str)
 parser.add_argument('--pca_dim', default=500, type=int)
 parser.add_argument('--datapath', default='../data/', type=str)
-parser.add_argument('--tuning', default=False, type=lambda x: (str(x).lower()=='true'))
-parser.add_argument('--alignment', default=True, type=lambda x: (str(x).lower()=='true'))
+parser.add_argument('--tuning', default=False, action="store_true")
+parser.add_argument('--alignment', default=False, action="store_true")
 
 
 """
