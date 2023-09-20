@@ -80,7 +80,6 @@ def load_model(args):
         )
         # tokenizer = kmer_tokenizer(k, stride=k)
         # sequence_pipeline = lambda x: vocab(tokenizer(pad(x)))
-        # tokenizer = DNATokenizer.from_pretrained(f"dna{k}", do_lower_case=False, cache_dir=args.checkpoint)
         tokenizer = DNATokenizer.from_pretrained(args.checkpoint, do_lower_case=False)
         sequence_pipeline = lambda x: tokenizer.encode_plus(
             x, max_length=max_len, add_special_tokens=True, pad_to_max_length=True
@@ -140,11 +139,11 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
             _barcode = barcodes[i]
             if args.model == "dnabert2":
                 x = sequence_pipeline(_barcode).to(device)
+                x = model(x)[-1]
             else:
                 x = torch.tensor(sequence_pipeline(_barcode), dtype=torch.int64).unsqueeze(0).to(device)
-            breakpoint()
-            x = model(x).hidden_states[-1]
-            x = x.mean(1)  # Global Average Pooling excluding CLS token
+                x = model(x).hidden_states[-1]
+                x = x.mean(1)  # Global Average Pooling excluding CLS token
             x = x.cpu().numpy()
 
             if str(label) not in dict_emb.keys():
