@@ -63,6 +63,7 @@ def load_model(args):
     print("Initializing the model . . .")
 
     # FIXME: vocab_size here is 4099, but the pretrained model from DNABERT has a vocab size of 4101
+    if args.model == "dnabert":
     configuration = BertConfig.from_pretrained(
         pretrained_model_name_or_path=args.checkpoint, output_hidden_states=True
     )
@@ -138,6 +139,7 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_path", default="../data/INSECT/res101.mat", type=str)
+    parser.add_argument("--model", choices=["dnabert", "dnabert2"], default="dnabert")
     parser.add_argument("--checkpoint", default="../data/dnabert_pretrained", type=str)
     parser.add_argument("--output_dir", type=str, default="../data/INSECT")
     parser.add_argument("--using_aligned_barcode", default=False, action="store_true")
