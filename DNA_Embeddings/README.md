@@ -15,6 +15,12 @@ python -m DNA_Embeddings.dnabert_extract_dna_feature --model dnabert --checkpoin
 python -m DNA_Embeddings.bert_extract_dna_feature --model dnabert2 --output ../data/INSECT/dna_embedding_insect_dnabert2.csv
 ```
 
+Note that for DNABERT-2, I ran into some issues with `trans_b` no longer being a supported parameter for `tl.dot`, and
+in the end just disabled flash_attention in the repo by setting `flash_attn_qkvpacked_func` to `None` in bert_layers.py.
+However, the code which needed to be modified is from huggingface and not part of this repository, so you may need to make
+that change manually yourself. The alternative is downgrading our python and pytorch versions until the particular version
+of triton we need is supported.
+
 ### Model weights
 
 - BIOSCAN BERT: model saved in BIOSCAN google drive folder
