@@ -6,3 +6,5 @@
 /BZSL-Python/tmp.fasta
 /BZSL-Python/tmp.txt
 /DNA_Embeddings/.ipynb_checkpoints/*
+venv/
+__pycache__/
