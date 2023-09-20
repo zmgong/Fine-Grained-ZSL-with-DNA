@@ -1,4 +1,5 @@
 import argparse
+import os
 import random
 from itertools import product
 
@@ -56,7 +57,6 @@ def load_model(args):
     vocab = build_vocab_from_iterator(kmer_iter, specials=["<MASK>", "<CLS>", "<UNK>"])
     vocab.set_default_index(vocab["<UNK>"])
     vocab_size = len(vocab)
-
     max_len = 660
     pad = PadSequence(max_len)
 
@@ -64,7 +64,7 @@ def load_model(args):
 
     if args.model == "bioscanbert":  # FIXME: not sure what to call this ':D
         tokenizer = kmer_tokenizer(k, stride=k)
-        sequence_pipeline = lambda x: vocab(tokenizer(pad(x)))
+        sequence_pipeline = lambda x: [0, *vocab(tokenizer(pad(x)))]
 
         configuration = BertConfig(vocab_size=vocab_size, output_hidden_states=True)
 
@@ -74,16 +74,22 @@ def load_model(args):
         model.load_state_dict(state_dict)
 
     elif args.model == "dnabert":
+        max_len = 512
         configuration = BertConfig.from_pretrained(
             pretrained_model_name_or_path=args.checkpoint, output_hidden_states=True
         )
-        tokenizer = DNATokenizer.from_pretrained(args.checkpoint)
-        sequence_pipeline = lambda x: vocab(tokenizer.encode_plus(x, max_length=max_len, pad_to_max_length=True)["input_ids"])
+        # tokenizer = kmer_tokenizer(k, stride=k)
+        # sequence_pipeline = lambda x: vocab(tokenizer(pad(x)))
+        # tokenizer = DNATokenizer.from_pretrained(f"dna{k}", do_lower_case=False, cache_dir=args.checkpoint)
+        tokenizer = DNATokenizer.from_pretrained(args.checkpoint, do_lower_case=False)
+        sequence_pipeline = lambda x: tokenizer.encode_plus(
+            x, max_length=max_len, add_special_tokens=True, pad_to_max_length=True
+        )["input_ids"]
         model = BertForMaskedLM.from_pretrained(pretrained_model_name_or_path=args.checkpoint, config=configuration)
 
     elif args.model == "dnabert2":
-        tokenizer = AutoTokenizer.from_pretrained("zhihan1996/DNABERT-2-177M", trust_remote_code=True)
-        sequence_pipeline = lambda x: vocab(tokenizer(pad(x), return_tensors="pt")["input_ids"])
+        tokenizer = AutoTokenizer.from_pretrained("zhihan1996/DNABERT-2-117M", trust_remote_code=True)
+        sequence_pipeline = lambda x: tokenizer(x, return_tensors="pt")["input_ids"]
         model = AutoModel.from_pretrained("zhihan1996/DNABERT-2-117M", trust_remote_code=True)
 
     model.to(device)
@@ -132,7 +138,11 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
         for i, label in pbar:
             pbar.set_description("Extracting features: ")
             _barcode = barcodes[i]
-            x = torch.tensor([0] + sequence_pipeline(_barcode), dtype=torch.int64).unsqueeze(0).to(device)
+            if args.model == "dnabert2":
+                x = sequence_pipeline(_barcode).to(device)
+            else:
+                x = torch.tensor(sequence_pipeline(_barcode), dtype=torch.int64).unsqueeze(0).to(device)
+            breakpoint()
             x = model(x).hidden_states[-1]
             x = x.mean(1)  # Global Average Pooling excluding CLS token
             x = x.cpu().numpy()
