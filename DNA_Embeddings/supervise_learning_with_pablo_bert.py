@@ -105,7 +105,7 @@ def load_model(args, number_of_classes):
     model.to(device)
 
     print("The model has been succesfully loaded . . .")
-    return model
+    return model, sequence_pipeline
 
 
 def load_data(args):
@@ -150,8 +150,10 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
                 x = model(x)[-1]
             else:
                 x = torch.tensor(sequence_pipeline(_barcode), dtype=torch.int64).unsqueeze(0).to(device)
-                x = model(x).hidden_states[-1]
-                x = x.mean(1)  # Global Average Pooling excluding CLS token
+                _, x = model(x)
+                x = x.squeeze()
+
+
             x = x.cpu().numpy()
 
             if str(label) not in dict_emb.keys():
@@ -163,7 +165,14 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
         class_embed.append(np.sum(dict_emb[str(i)], axis=0) / len(dict_emb[str(i)]))
     class_embed = np.array(class_embed, dtype=object)
     class_embed = class_embed.T.squeeze()
-    np.savetxt(args.output, class_embed, delimiter=",")
+
+    if args.using_aligned_barcode:
+        np.savetxt(os.path.join(args.output_dir, "dna_embedding_supervised_fine_tuned_pablo_bert_aligned.csv"), class_embed, delimiter=",")
+    else:
+        np.savetxt(os.path.join(args.output_dir, "dna_embedding_supervised_fine_tuned_pablo_bert.csv"),
+                   class_embed, delimiter=",")
+
+
     print("DNA embeddings is saved.")
 
 def construct_dataloader(X_train, X_val, y_train, y_val, batch_size, k=6, max_len=660):
@@ -180,15 +189,20 @@ if __name__ == "__main__":
     parser.add_argument("--input_path", default="../data/INSECT/res101.mat", type=str)
     parser.add_argument("--model", choices=["bioscanbert", "dnabert", "dnabert2"], default="bioscanbert")
     parser.add_argument("--checkpoint", default="bert_checkpoint/model_44.pth", type=str)
-    parser.add_argument("--output", type=str, default="../data/INSECT/dna_embedding.csv")
+    parser.add_argument("--output_dir", type=str, default="../data/INSECT/")
     parser.add_argument("--using_aligned_barcode", default=False, action="store_true")
+    parser.add_argument("--n_epoch", default=12, type=int)
+
     args = parser.parse_args()
 
     x_train, y_train, x_val, y_val, barcodes, labels, number_of_classes = load_data(args)
 
-    model = load_model(args, number_of_classes)
+    model, sequence_pipeline = load_model(args, number_of_classes)
 
     train_loader, val_loader = construct_dataloader(x_train, x_val, y_train, y_val, 32)
 
-    train_and_eval(model, train_loader, val_loader, device=device, n_epoch=5)
+    train_and_eval(model, train_loader, val_loader, device=device, n_epoch=args.n_epoch)
+
+    extract_and_save_class_level_feature(args, model, sequence_pipeline, barcodes, labels)
+
 
