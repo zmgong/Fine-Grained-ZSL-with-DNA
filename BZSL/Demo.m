@@ -48,7 +48,7 @@ clear all;
 clc;
 
 datapath = '../data/';
-dataset = 'INSECT'; %  {'INSECT', 'CUB'}
+dataset = 'CUB'; %  {'INSECT', 'CUB'}
 
 fname1=[datapath, dataset, '/res101.mat'];
 fname2=[datapath, dataset, '/att_splits.mat'];

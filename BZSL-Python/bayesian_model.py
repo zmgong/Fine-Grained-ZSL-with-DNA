@@ -264,7 +264,8 @@ class Model(object):
 
     def hyperparameter_tuning(self, constrained=False):
         # Default # features for PCA id Unconstrained model selected
-        dataloader = data_loader(self.datapath, self.dataset, self.side_info, self.tuning)
+
+        dataloader = data_loader(self.datapath, self.dataset, self.side_info, self.tuning, self.alignment)
 
         # load attribute
 
