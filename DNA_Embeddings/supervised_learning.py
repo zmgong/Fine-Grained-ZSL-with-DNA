@@ -1,43 +1,26 @@
 import argparse
 import os
 import random
-from itertools import product
 
 import numpy as np
 import scipy.io as sio
 import torch
-from torchtext.vocab import build_vocab_from_iterator
-from transformers import AutoModel, AutoTokenizer, BertConfig, BertForMaskedLM
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 from sklearn.model_selection import StratifiedShuffleSplit
 
-from util import KmerTokenizer
 from bert_extract_dna_feature import extract_clean_barcode_list, extract_clean_barcode_list_for_aligned
-from pablo_bert_with_prediction_head import Bert_With_Prediction_Head, train_and_eval
-from torch.utils.data import DataLoader, Dataset
-
+from pablo_bert_with_prediction_head import train_and_eval
+from model import load_model
 
 device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
 random.seed(10)
 
 
-
-
 class DNADataset(Dataset):
-    def __init__(self, barcodes, labels, k_mer=4, stride=4, max_len=256):
-        self.k_mer = k_mer
-        self.stride = stride
-        self.max_len = max_len
-
+    def __init__(self, barcodes, labels, tokenizer):
         # Vocabulary
-        kmer_iter = ([''.join(kmer)] for kmer in product('ACGT', repeat=self.k_mer))
-        self.vocab = build_vocab_from_iterator(kmer_iter, specials=["<MASK>", "<CLS>", "<UNK>"])
-        self.vocab.set_default_index(self.vocab["<UNK>"])
-        self.vocab_size = len(self.vocab)
-
-        self.tokenizer = KmerTokenizer(self.k_mer, self.vocab, stride=self.stride, padding=True, max_len=self.max_len)
-
-
+        self.tokenizer = tokenizer
         self.barcodes = barcodes
         self.labels = labels
 
@@ -47,65 +30,6 @@ class DNADataset(Dataset):
     def __getitem__(self, idx):
         processed_barcode = torch.tensor(self.tokenizer(self.barcodes[idx]), dtype=torch.int64)
         return processed_barcode, self.labels[idx]
-
-
-class kmer_tokenizer(object):
-    def __init__(self, k, stride=1):
-        self.k = k
-        self.stride = stride
-
-    def __call__(self, dna_sequence):
-        tokens = []
-        for i in range(0, len(dna_sequence) - self.k + 1, self.stride):
-            k_mer = dna_sequence[i: i + self.k]
-            tokens.append(k_mer)
-        return tokens
-
-
-class PadSequence(object):
-    def __init__(self, max_len):
-        self.max_len = max_len
-
-    def __call__(self, dna_sequence):
-        if len(dna_sequence) > self.max_len:
-            return dna_sequence[: self.max_len]
-        else:
-            return dna_sequence + "N" * (self.max_len - len(dna_sequence))
-
-        # return new_sequence
-
-
-def remove_extra_pre_fix(state_dict):
-    new_state_dict = {}
-    for key, value in state_dict.items():
-        if key.startswith("module."):
-            key = key[7:]  # 去除 'module.' 前缀
-        new_state_dict[key] = value
-    return new_state_dict
-
-
-def load_model(args, number_of_classes):
-    k = 6
-    kmer_iter = (["".join(kmer)] for kmer in product("ACGT", repeat=k))
-    vocab = build_vocab_from_iterator(kmer_iter, specials=["<MASK>", "<CLS>", "<UNK>"])
-    vocab.set_default_index(vocab["<UNK>"])
-    vocab_size = len(vocab)
-    max_len = 660
-    pad = PadSequence(max_len)
-
-    print("Initializing the model . . .")
-
-    tokenizer = kmer_tokenizer(k, stride=k)
-    sequence_pipeline = lambda x: [0, *vocab(tokenizer(pad(x)))]
-    configuration = BertConfig(vocab_size=vocab_size, output_hidden_states=True)
-    bert_model = BertForMaskedLM(configuration)
-
-    model = Bert_With_Prediction_Head(out_feature=number_of_classes, bert_model=bert_model)
-    model.load_bert_model(args.checkpoint)
-    model.to(device)
-
-    print("The model has been succesfully loaded . . .")
-    return model, sequence_pipeline
 
 
 def load_data(args):
@@ -175,12 +99,12 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
 
     print("DNA embeddings is saved.")
 
-def construct_dataloader(X_train, X_val, y_train, y_val, batch_size, k=6, max_len=660):
+def construct_dataloader(X_train, X_val, y_train, y_val, batch_size, tokenizer):
 
-    train_dataset = DNADataset(X_train, y_train, k_mer=k, stride=k, max_len=max_len)
+    train_dataset = DNADataset(X_train, y_train, tokenizer)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
-    val_dataset = DNADataset(X_val, y_val, k_mer=k, stride=k, max_len=max_len)
+    val_dataset = DNADataset(X_val, y_val, tokenizer)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
     return train_dataloader, val_dataloader
 
@@ -195,11 +119,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    x_train, y_train, x_val, y_val, barcodes, labels, number_of_classes = load_data(args)
+    x_train, y_train, x_val, y_val, barcodes, labels, num_classes = load_data(args)
 
-    model, sequence_pipeline = load_model(args, number_of_classes)
+    model, sequence_pipeline = load_model(args, classification_head=True, num_classes=num_classes)
 
-    train_loader, val_loader = construct_dataloader(x_train, x_val, y_train, y_val, 32)
+    train_loader, val_loader = construct_dataloader(x_train, x_val, y_train, y_val, 32, sequence_pipeline)
 
     train_and_eval(model, train_loader, val_loader, device=device, n_epoch=args.n_epoch)
 

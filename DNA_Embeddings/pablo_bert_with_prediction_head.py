@@ -1,12 +1,10 @@
 import torch.nn as nn
 import torch.nn.functional as F
 from opt_einsum.backends import torch
-from torch import optim
 import torch
-import numpy as np
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
-from bert_extract_dna_feature import remove_extra_pre_fix
+
 
 class Bert_With_Prediction_Head(nn.Module):
     def __init__(self, out_feature, bert_model, dim=768, embedding_dim=768):
@@ -20,7 +18,6 @@ class Bert_With_Prediction_Head(nn.Module):
         self.dropout = nn.Dropout(0.2)
 
     def forward(self, x):
-
         x = self.bert_model(x).hidden_states[-1].mean(dim=1)
         # print(dir(x))
         # exit()
@@ -31,10 +28,6 @@ class Bert_With_Prediction_Head(nn.Module):
         x = self.lin2(x)
         return x, feature
 
-    def load_bert_model(self, path_to_ckpt):
-        state_dict = torch.load(path_to_ckpt)
-        state_dict = remove_extra_pre_fix(state_dict)
-        self.bert_model.load_state_dict(state_dict)
 
 def categorical_cross_entropy(outputs, target, num_classes=1213):
     m = nn.Softmax(dim=1)
@@ -44,13 +37,14 @@ def categorical_cross_entropy(outputs, target, num_classes=1213):
     loss = (-pred_label * target_label).sum(dim=1).mean()
     return loss
 
+
 def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12):
     criterion = nn.CrossEntropyLoss()
     # criterion = categorical_cross_entropy()
     # optimizer = optim.Adam(model.parameters(), lr=lr)
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
     scheduler = StepLR(optimizer, step_size=3, gamma=0.5)
-    print('start training')
+    print("start training")
     loss = None
     for epoch in range(n_epoch):  # loop over the dataset multiple times
         running_loss = 0.0
@@ -66,6 +60,7 @@ def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12)
             # forward + backward + optimize
             # print(inputs)
             # exit()
+            print("[WARNING] We might need to update how the model is called on inputs based on tokenizer.")
             outputs, _ = model(inputs)
 
             # print(outputs[0])
@@ -107,11 +102,19 @@ def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12)
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
-        print("Epoch: " + str(epoch) + "|| loss: " + str(
-            running_loss / len(trainloader)) + "|| Accuracy: " + str(
-            train_correct / train_total) + "|| Val Accuracy: " + str(correct / total) + "|| lr: " + str(scheduler.get_last_lr()))
+        print(
+            "Epoch: "
+            + str(epoch)
+            + "|| loss: "
+            + str(running_loss / len(trainloader))
+            + "|| Accuracy: "
+            + str(train_correct / train_total)
+            + "|| Val Accuracy: "
+            + str(correct / total)
+            + "|| lr: "
+            + str(scheduler.get_last_lr())
+        )
         running_loss = 0
         scheduler.step()
 
-    print('Finished Training')
-
+    print("Finished Training")

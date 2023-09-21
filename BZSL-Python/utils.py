@@ -11,8 +11,7 @@ from sklearn.model_selection import train_test_split
 
 
 class data_loader(object):
-    def __init__(self, datapath, dataset, side_info='original', tuning=False, alignment=True):
-
+    def __init__(self, datapath, dataset, side_info="original", tuning=False, alignment=True):
         print("The current working directory is")
         print(os.getcwd())
         self.datapath = datapath  # '../data/'
@@ -24,58 +23,85 @@ class data_loader(object):
         self.read_matdata()
 
     def read_matdata(self):
-        path = os.path.join(self.datapath, self.dataset, 'res101.mat')
+        path = os.path.join(self.datapath, self.dataset, "res101.mat")
         data_mat = sio.loadmat(path)
-        self.features = data_mat['features'].T
-        print('self.feature: ')
+        self.features = data_mat["features"].T
+        print("self.feature: ")
 
-        self.labels = data_mat['labels'].ravel() - 1
-        path = os.path.join(self.datapath, self.dataset, 'att_splits.mat')
+        self.labels = data_mat["labels"].ravel() - 1
+        path = os.path.join(self.datapath, self.dataset, "att_splits.mat")
         splits_mat = sio.loadmat(path)
 
-        self.trainval_loc = splits_mat['trainval_loc'].ravel() - 1
-        self.train_loc = splits_mat['train_loc'].ravel() - 1
-        self.val_unseen_loc = splits_mat['val_loc'].ravel() - 1
-        self.test_seen_loc = splits_mat['test_seen_loc'].ravel() - 1
-        self.test_unseen_loc = splits_mat['test_unseen_loc'].ravel() - 1
+        self.trainval_loc = splits_mat["trainval_loc"].ravel() - 1
+        self.train_loc = splits_mat["train_loc"].ravel() - 1
+        self.val_unseen_loc = splits_mat["val_loc"].ravel() - 1
+        self.test_seen_loc = splits_mat["test_seen_loc"].ravel() - 1
+        self.test_unseen_loc = splits_mat["test_unseen_loc"].ravel() - 1
 
-        if self.side_info_source not in ['original', 'w2v', 'dna', 'dna_pablo_bert', 'dna_dnabert', 'dna_dnabert2']:
+        if self.side_info_source not in ["original", "w2v", "dna", "dna_pablo_bert", "dna_dnabert", "dna_dnabert2"]:
             print(
-                'Please choose a valid source for side information. There are 3 possibilities for CUB data: ["original", "w2v", "dna"] and one for INSECT: "dna"')
+                'Please choose a valid source for side information. There are 3 possibilities for CUB data: ["original", "w2v", "dna"] and one for INSECT: "dna"'
+            )
             return
 
-        if (self.dataset == 'INSECT') and (self.side_info_source not in ['dna', 'dna_pablo_bert', 'dna_dnabert', 'dna_dnabert2']):
+        if (self.dataset == "INSECT") and (
+            self.side_info_source not in ["dna", "dna_pablo_bert", "dna_dnabert", "dna_dnabert2"]
+        ):
             print(
-                'Invalid side information source for INSECT data! There is only one side information source for INSECT dataset: "dna". Model will continue using DNA as side information')
-        if self.dataset == 'INSECT':
-            if self.side_info_source == 'dna':
+                'Invalid side information source for INSECT data! There is only one side information source for INSECT dataset: "dna". Model will continue using DNA as side information'
+            )
+        if self.dataset == "INSECT":
+            if self.side_info_source == "dna":
                 if self.alignment is True:
                     print("INSECT: Aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding.csv'), delimiter=',')
+                    self.side_info = np.genfromtxt(
+                        os.path.join(self.datapath, self.dataset, "dna_embedding.csv"), delimiter=","
+                    )
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_no_alignment.csv'), delimiter=',')
-            elif self.side_info_source == 'dna_pablo_bert':
+                    self.side_info = np.genfromtxt(
+                        os.path.join(self.datapath, self.dataset, "dna_embedding_no_alignment.csv"), delimiter=","
+                    )
+            elif self.side_info_source == "dna_pablo_bert":
                 if self.alignment is True:
                     print("INSECT: Aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_using_bert_of_pablo_team.csv'), delimiter=',')
+                    self.side_info = np.genfromtxt(
+                        os.path.join(self.datapath, self.dataset, "dna_embedding_using_bert_of_pablo_team.csv"),
+                        delimiter=",",
+                    )
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_using_bert_of_pablo_team_no_alignment.csv'), delimiter=',')
-            elif self.side_info_source == 'dna_dnabert':
+                    self.side_info = np.genfromtxt(
+                        os.path.join(
+                            self.datapath, self.dataset, "dna_embedding_using_bert_of_pablo_team_no_alignment.csv"
+                        ),
+                        delimiter=",",
+                    )
+            elif self.side_info_source == "dna_dnabert":
                 if self.alignment is True:
                     print("INSECT: Aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_insect_dnabert_aligned.csv'), delimiter=',')
+                    self.side_info = np.genfromtxt(
+                        os.path.join(self.datapath, self.dataset, "dna_embedding_insect_dnabert_aligned.csv"),
+                        delimiter=",",
+                    )
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_insect_dnabert.csv'), delimiter=',')
-            elif self.side_info_source == 'dna_dnabert2':
+                    self.side_info = np.genfromtxt(
+                        os.path.join(self.datapath, self.dataset, "dna_embedding_insect_dnabert.csv"),
+                        delimiter=",",
+                    )
+            elif self.side_info_source == "dna_dnabert2":
                 if self.alignment is True:
                     print("INSECT: Aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_insect_dnabert2_aligned.csv'), delimiter=',')
+                    self.side_info = np.genfromtxt(
+                        os.path.join(self.datapath, self.dataset, "dna_embedding_insect_dnabert2_aligned.csv"),
+                        delimiter=",",
+                    )
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_insect_dnabert2.csv'), delimiter=',')
+                    self.side_info = np.genfromtxt(
+                        os.path.join(self.datapath, self.dataset, "dna_embedding_insect_dnabert2.csv"), delimiter=","
+                    )
 
         # Origin
         # self.side_info = splits_mat['att']
@@ -86,18 +112,20 @@ class data_loader(object):
         #         self.side_info = splits_mat['att_dna']
 
         # Modified
-        if self.dataset == 'CUB':
-            if self.side_info_source == 'w2v':
-                self.side_info = splits_mat['att_w2v']
+        if self.dataset == "CUB":
+            if self.side_info_source == "w2v":
+                self.side_info = splits_mat["att_w2v"]
             else:
                 if self.alignment is True:
                     print("CUB: Aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding.csv'), delimiter=',')
+                    self.side_info = np.genfromtxt(
+                        os.path.join(self.datapath, self.dataset, "dna_embedding.csv"), delimiter=","
+                    )
                 else:
                     print("CUB: Not aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_no_alignment.csv'), delimiter=',')
-
-
+                    self.side_info = np.genfromtxt(
+                        os.path.join(self.datapath, self.dataset, "dna_embedding_no_alignment.csv"), delimiter=","
+                    )
 
     def data_split(self):
         if self.tuning:
@@ -120,23 +148,23 @@ class data_loader(object):
         return xtrain, ytrain, xtest_seen, ytest_seen, xtest_unseen, ytest_unseen
 
     def load_tuned_params(self):
-
-        if self.dataset not in ['INSECT', 'CUB']:
+        if self.dataset not in ["INSECT", "CUB"]:
             print(
-                'The provided dataset is not in the gallery. Please use one of these 2 datsets to load tuned params: ["INSECT", "CUB"]')
+                'The provided dataset is not in the gallery. Please use one of these 2 datsets to load tuned params: ["INSECT", "CUB"]'
+            )
             return
 
         dim = 500
 
-        if self.dataset == 'INSECT':
+        if self.dataset == "INSECT":
             hyperparams = [0.1, 10, 5 * dim, 10, 3]
 
-        if self.dataset == 'CUB':
-            if self.side_info_source == 'original':
+        if self.dataset == "CUB":
+            if self.side_info_source == "original":
                 hyperparams = [1, 25, 500 * dim, 10, 3]
-            elif self.side_info_source == 'w2v':
+            elif self.side_info_source == "w2v":
                 hyperparams = [0.1, 25, 5 * dim, 5, 2]
-            elif self.side_info_source == 'dna':
+            elif self.side_info_source == "dna":
                 hyperparams = [0.1, 25, 25 * dim, 5, 3]
 
         return self.side_info, hyperparams[0], hyperparams[1], hyperparams[2], hyperparams[3], hyperparams[4]
