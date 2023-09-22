@@ -15,6 +15,7 @@ class data_loader(object):
 
         print("The current working directory is")
         print(os.getcwd())
+
         self.datapath = datapath  # '../data/'
         self.dataset = dataset
         self.side_info_source = side_info
@@ -39,14 +40,17 @@ class data_loader(object):
         self.test_seen_loc = splits_mat['test_seen_loc'].ravel() - 1
         self.test_unseen_loc = splits_mat['test_unseen_loc'].ravel() - 1
 
-        if self.side_info_source not in ['original', 'w2v', 'dna', 'dna_pablo_bert', 'dna_dnabert', 'dna_dnabert2']:
+        if self.side_info_source not in ['original', 'w2v', 'dna', 'dna_pablo_bert', 'dna_dnabert', 'dna_dnabert2', 'dna_pablo_bert_tuned', 'dna_pablo_bert_mlm_tuned', 'dna_pablo_bert_tuned_5_mer']:
             print(
-                'Please choose a valid source for side information. There are 3 possibilities for CUB data: ["original", "w2v", "dna"] and one for INSECT: "dna"')
-            return
+                'Please choose a valid source for side information. There are 3 possibilities for CUB data: ["original", "w2v", "dna", "dna_pablo_bert", "dna_dnabert", "dna_dnabert2", "dna_pablo_bert_tuned", "dna_pablo_bert_mlm_tuned"] and one for INSECT: "dna"')
+            exit()
 
-        if (self.dataset == 'INSECT') and (self.side_info_source not in ['dna', 'dna_pablo_bert', 'dna_dnabert', 'dna_dnabert2']):
+        if (self.dataset == 'INSECT') and (self.side_info_source not in ['dna', 'dna_pablo_bert', 'dna_dnabert', 'dna_dnabert2', 'dna_pablo_bert_tuned', 'dna_pablo_bert_mlm_tuned', "dna_pablo_bert_tuned_5_mer"]):
             print(
-                'Invalid side information source for INSECT data! There is only one side information source for INSECT dataset: "dna". Model will continue using DNA as side information')
+                'Invalid side information source for INSECT data! The side information source for INSECT dataset are: ["original", "w2v", "dna", "dna_pablo_bert", "dna_dnabert", "dna_dnabert2", "dna_pablo_bert_tuned", "dna_pablo_bert_mlm_tuned"] . Model will continue using DNA as side information')
+            exit()
+
+
         if self.dataset == 'INSECT':
             if self.side_info_source == 'dna':
                 if self.alignment is True:
@@ -76,6 +80,28 @@ class data_loader(object):
                 else:
                     print("INSECT: Not aligned")
                     self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_insect_dnabert2.csv'), delimiter=',')
+            elif self.side_info_source == 'dna_pablo_bert_tuned':
+                if self.alignment is True:
+                    print("INSECT: Aligned")
+                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_supervised_fine_tuned_pablo_bert_aligned.csv'), delimiter=',')
+                else:
+                    print("INSECT: Not aligned")
+                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_supervised_fine_tuned_pablo_bert.csv'), delimiter=',')
+            elif self.side_info_source == 'dna_pablo_bert_mlm_tuned':
+                if self.alignment is True:
+                    print("INSECT: Aligned")
+                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_mlm_fine_tuned_pablo_bert_aligned.csv'), delimiter=',')
+                else:
+                    print("INSECT: Not aligned")
+                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_mlm_fine_tuned_pablo_bert.csv'), delimiter=',')
+
+            elif self.side_info_source == 'dna_pablo_bert_tuned_5_mer':
+                if self.alignment is True:
+                    print("INSECT: Aligned")
+                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40_aligned.csv'), delimiter=',')
+                else:
+                    print("INSECT: Not aligned")
+                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40.csv'), delimiter=',')
 
         # Origin
         # self.side_info = splits_mat['att']

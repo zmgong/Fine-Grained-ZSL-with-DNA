@@ -1,11 +1,14 @@
 import argparse
 import os
+import pickle
 import random
+import sys
 from itertools import product
 
 import numpy as np
 import scipy.io as sio
 import torch
+from torch import optim
 from torchtext.vocab import build_vocab_from_iterator
 from transformers import AutoModel, AutoTokenizer, BertConfig, BertForMaskedLM
 from tqdm import tqdm
@@ -16,15 +19,12 @@ from bert_extract_dna_feature import extract_clean_barcode_list, extract_clean_b
 from pablo_bert_with_prediction_head import Bert_With_Prediction_Head, train_and_eval
 from torch.utils.data import DataLoader, Dataset
 
-
 device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
 random.seed(10)
 
 
-
-
 class DNADataset(Dataset):
-    def __init__(self, barcodes, labels, k_mer=4, stride=4, max_len=256):
+    def __init__(self, barcodes, k_mer=4, stride=4, max_len=256):
         self.k_mer = k_mer
         self.stride = stride
         self.max_len = max_len
@@ -37,16 +37,14 @@ class DNADataset(Dataset):
 
         self.tokenizer = KmerTokenizer(self.k_mer, self.vocab, stride=self.stride, padding=True, max_len=self.max_len)
 
-
         self.barcodes = barcodes
-        self.labels = labels
 
     def __len__(self):
         return len(self.barcodes)
 
     def __getitem__(self, idx):
         processed_barcode = torch.tensor(self.tokenizer(self.barcodes[idx]), dtype=torch.int64)
-        return processed_barcode, self.labels[idx]
+        return processed_barcode
 
 
 class kmer_tokenizer(object):
@@ -85,7 +83,7 @@ def remove_extra_pre_fix(state_dict):
 
 
 def load_model(args, number_of_classes):
-    k = args.k
+    k = 6
     kmer_iter = (["".join(kmer)] for kmer in product("ACGT", repeat=k))
     vocab = build_vocab_from_iterator(kmer_iter, specials=["<MASK>", "<CLS>", "<UNK>"])
     vocab.set_default_index(vocab["<UNK>"])
@@ -98,12 +96,12 @@ def load_model(args, number_of_classes):
     tokenizer = kmer_tokenizer(k, stride=k)
     sequence_pipeline = lambda x: [0, *vocab(tokenizer(pad(x)))]
     configuration = BertConfig(vocab_size=vocab_size, output_hidden_states=True)
-    bert_model = BertForMaskedLM(configuration)
 
-    model = Bert_With_Prediction_Head(out_feature=number_of_classes, bert_model=bert_model)
-    model.load_bert_model(args.checkpoint)
+    model = BertForMaskedLM(configuration)
+    state_dict = torch.load(args.checkpoint)
+    state_dict = remove_extra_pre_fix(state_dict)
+    model.load_state_dict(state_dict)
     model.to(device)
-
     print("The model has been succesfully loaded . . .")
     return model, sequence_pipeline
 
@@ -117,23 +115,73 @@ def load_data(args):
         barcodes = extract_clean_barcode_list(x["nucleotides"])
     labels = x["labels"].squeeze() - 1
 
-
-    stratified_split = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
-    train_index = None
-    val_index = None
-    for train_split, val_split in stratified_split.split(barcodes, labels):
-        train_index = train_split
-        val_index = val_split
-
-    x_train = np.array([barcodes[i] for i in train_index])
-    x_val = np.array([barcodes[i] for i in val_index])
-    y_train = np.array([labels[i] for i in train_index])
-    y_val = np.array([labels[i] for i in val_index])
-
     number_of_classes = np.unique(labels).shape[0]
 
-    return x_train, y_train, x_val, y_val, barcodes, labels, number_of_classes
+    return barcodes, labels, number_of_classes
 
+
+
+
+
+def construct_dataloader(barcodes, batch_size, k=6, max_len=660):
+    dataset = DNADataset(barcodes, k_mer=k, stride=k, max_len=max_len)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+
+    return dataloader
+
+
+def train(args, dataloader, device, model, optimizer, scheduler):
+    model.train()
+    epoch_loss_list = []
+    training_epoch = 100
+    continue_epoch = 0
+
+    if not os.path.isdir(args.ckpt_output_dir):
+        os.makedirs(args.ckpt_output_dir, exist_ok=True)
+
+    print("Training is started:\n")
+
+    for epoch in range(args.n_epoch):
+        epoch_loss = 0
+        pbar = tqdm(enumerate(dataloader), total=len(dataloader))
+        for i, batch in pbar:
+
+            optimizer.zero_grad()
+
+            # Build the masking on the fly every time something different
+            batch = batch.to(device)
+            masked_input = batch.clone()
+            random_mask = torch.rand(masked_input.shape).to(device)  # I can only do this for non-overlapping
+            random_mask = (random_mask < 0.5) * (masked_input != 2)  # Cannot mask the [<UNK>] token
+            mask_idx = (random_mask.flatten() == True).nonzero().view(-1)
+            masked_input = masked_input.flatten()
+            masked_input[mask_idx] = 1
+            masked_input = masked_input.view(batch.size())
+
+
+            out = model(masked_input, labels=batch)
+            loss = out.loss
+            epoch_loss += loss.item()
+
+            loss.backward()
+            optimizer.step()
+            pbar.set_description("loss: " + str(loss.item()))
+
+        epoch_loss = epoch_loss / len(dataloader)
+        epoch_loss_list.append(epoch_loss)
+        before_lr = optimizer.param_groups[0]["lr"]
+        scheduler.step()
+        after_lr = optimizer.param_groups[0]["lr"]
+        print("Epoch %d: lr %f -> %f" % (epoch, before_lr, after_lr))
+        print("Epoch loss: " + str(epoch_loss))
+
+    torch.save(model.state_dict(), args.ckpt_output_dir + "/model_" + str(args.n_epoch) + '.pth')
+    torch.save(optimizer.state_dict(), args.ckpt_output_dir + "/optimizer_" + str(args.n_epoch) + '.pth')
+    torch.save(scheduler.state_dict(), args.ckpt_output_dir + "/scheduler_" + str(args.n_epoch) + '.pth')
+
+    a_file = open(args.ckpt_output_dir + f"/loss_{device}.pkl", "wb")
+    pickle.dump(epoch_loss_list, a_file)
+    a_file.close()
 
 def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcodes, labels):
     all_label = np.unique(labels)
@@ -150,9 +198,8 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
                 x = model(x)[-1]
             else:
                 x = torch.tensor(sequence_pipeline(_barcode), dtype=torch.int64).unsqueeze(0).to(device)
-                _, x = model(x)
+                x = model(x).hidden_states[-1].mean(dim=1)
                 x = x.squeeze()
-
 
             x = x.cpu().numpy()
 
@@ -167,43 +214,37 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
     class_embed = class_embed.T.squeeze()
 
     if args.using_aligned_barcode:
-        np.savetxt(os.path.join(args.output_dir, "dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40_aligned.csv"), class_embed, delimiter=",")
+        np.savetxt(os.path.join(args.output_dir, "dna_embedding_mlm_fine_tuned_pablo_bert_aligned.csv"), class_embed, delimiter=",")
     else:
-        np.savetxt(os.path.join(args.output_dir, "dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40.csv"),
+        np.savetxt(os.path.join(args.output_dir, "dna_embedding_mlm_fine_tuned_pablo_bert.csv"),
                    class_embed, delimiter=",")
 
 
     print("DNA embeddings is saved.")
 
-def construct_dataloader(X_train, X_val, y_train, y_val, batch_size, k=5, max_len=660):
-
-    train_dataset = DNADataset(X_train, y_train, k_mer=k, stride=k, max_len=max_len)
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-
-    val_dataset = DNADataset(X_val, y_val, k_mer=k, stride=k, max_len=max_len)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-    return train_dataloader, val_dataloader
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_path", default="../data/INSECT/res101.mat", type=str)
     parser.add_argument("--model", choices=["bioscanbert", "dnabert", "dnabert2"], default="bioscanbert")
-    parser.add_argument("--checkpoint", default="bert_checkpoint/5-mer/model_41.pth", type=str)
+    parser.add_argument("--checkpoint", default="bert_checkpoint/model_44.pth", type=str)
     parser.add_argument("--output_dir", type=str, default="../data/INSECT/")
     parser.add_argument("--using_aligned_barcode", default=False, action="store_true")
-    parser.add_argument("--n_epoch", default=12, type=int)
-    parser.add_argument("--k", default=5, type=int)
+    parser.add_argument("--ckpt_output_dir", type=str, default="../checkpoints/mlm_fine_tuned_pablo_model")
+    parser.add_argument('--lr', action='store', type=float, default=1e-4)
+    parser.add_argument('--weight_decay', action='store', type=float, default=1e-05)
+    parser.add_argument("--n_epoch", default=20, type=int)
 
     args = parser.parse_args()
 
-    x_train, y_train, x_val, y_val, barcodes, labels, number_of_classes = load_data(args)
+    barcodes, labels, number_of_classes = load_data(args)
 
     model, sequence_pipeline = load_model(args, number_of_classes)
 
-    train_loader, val_loader = construct_dataloader(x_train, x_val, y_train, y_val, 32, k=args.k)
+    dataloader = construct_dataloader(barcodes, 32)
 
-    train_and_eval(model, train_loader, val_loader, device=device, n_epoch=args.n_epoch)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    scheduler = optim.lr_scheduler.LinearLR(optimizer, start_factor=1e-2, total_iters=5)
+
+    train(args, dataloader, device, model, optimizer, scheduler)
 
     extract_and_save_class_level_feature(args, model, sequence_pipeline, barcodes, labels)
-
-

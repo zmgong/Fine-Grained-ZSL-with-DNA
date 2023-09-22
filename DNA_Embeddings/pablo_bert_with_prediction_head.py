@@ -32,7 +32,7 @@ class Bert_With_Prediction_Head(nn.Module):
         return x, feature
 
     def load_bert_model(self, path_to_ckpt):
-        state_dict = torch.load(path_to_ckpt)
+        state_dict = torch.load(path_to_ckpt, map_location=torch.device('cpu'))
         state_dict = remove_extra_pre_fix(state_dict)
         self.bert_model.load_state_dict(state_dict)
 
