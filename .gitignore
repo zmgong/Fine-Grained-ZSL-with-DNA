@@ -8,3 +8,4 @@
 /DNA_Embeddings/.ipynb_checkpoints/*
 venv/
 __pycache__/
+.vscode/
