@@ -9,26 +9,19 @@ from tqdm import tqdm
 
 
 class Model(nn.Module):
-    def __init__(self, in_feature, out_feature, dim=4048, embedding_dim=500):
+    def __init__(self, in_feature, out_feature, dim=1840, embedding_dim=500):
         super().__init__()
         self.pool = nn.MaxPool2d((3, 1))
-
-        self.conv1 = nn.Conv2d(in_channels=in_feature, out_channels=64, kernel_size=(3, 3), padding=(0, 2))
+        self.conv1 = nn.Conv2d(in_channels=in_feature, out_channels=64, kernel_size=(3, 3), padding=(0, 1))
         self.bn1 = nn.BatchNorm2d(64)
-
-        self.conv2 = nn.Conv2d(in_channels=64, out_channels=32, kernel_size=(3, 3), padding=(0, 2))
+        self.conv2 = nn.Conv2d(in_channels=64, out_channels=32, kernel_size=(3, 3), padding=(0, 1))
         self.bn2 = nn.BatchNorm2d(32)
-
-        self.conv3 = nn.Conv2d(in_channels=32, out_channels=16, kernel_size=(3, 3), padding=(0, 2))
+        self.conv3 = nn.Conv2d(in_channels=32, out_channels=16, kernel_size=(3, 3), padding=(0, 1))
         self.bn3 = nn.BatchNorm2d(16)
-
         self.flat = nn.Flatten(1, 3)
-
         self.lin1 = nn.Linear(dim, embedding_dim)
         self.lin2 = nn.Linear(embedding_dim, out_feature)
-
         self.tanh = nn.Tanh()
-
         self.dropout = nn.Dropout(0.2)
 
     def forward(self, x):

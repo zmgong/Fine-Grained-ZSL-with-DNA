@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.text import Tokenizer
 from torch import optim
 from torch.utils.data import TensorDataset, DataLoader
-
+from util import construct_dataloader
 from CNN import Model, train_and_eval
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -19,7 +19,6 @@ def load_data():
     dataset = 'INSECT'
     x = sio.loadmat(os.path.join(datapath, dataset, 'res101.mat'))
     x2 = sio.loadmat(os.path.join(datapath, dataset, 'att_splits.mat'))
-
     barcodes = x['nucleotides_aligned'].T
 
     species = x['labels']
@@ -114,20 +113,6 @@ def load_data():
 
     total_number_of_classes = len(np.unique(labels))
     return X_train, X_test, y_train, y_test, torch.Tensor(allX), species, total_number_of_classes
-
-
-def construct_dataloader(X_train, X_test, y_train, y_test, batch_size):
-    X_train = torch.Tensor(X_train)
-    X_test = torch.Tensor(X_test)
-    y_train = torch.Tensor(y_train)
-    y_test = torch.Tensor(y_test)
-
-    train_dataset = TensorDataset(X_train, y_train)
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
-
-    test_dataset = TensorDataset(X_test, y_test)
-    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
-    return train_dataloader, test_dataloader
 
 
 def get_embedding(model, all_X):

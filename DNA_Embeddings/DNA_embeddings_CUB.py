@@ -136,7 +136,7 @@ def load_data():
     allX = np.expand_dims(allX, axis=3)
 
     X_train, X_test, y_train, y_test = train_test_split(trainX, labelY, test_size=0.2, random_state=42)
-    total_number_of_classes = len(np.unique(labels))
+    total_number_of_classes = 1213
     return X_train, X_test, y_train, y_test, torch.Tensor(allX), c_labels_, total_number_of_classes
 
 
@@ -170,7 +170,7 @@ def get_embedding(model, all_X):
 if __name__ == '__main__':
     X_train, X_test, y_train, y_test, all_X, species, total_number_of_classes = load_data()
     trainloader, testloader = construct_dataloader(X_train, X_test, y_train, y_test, 32)
-    model = Model(1, total_number_of_classes, 9504, embedding_dim=400).to(device)
+    model = Model(1, total_number_of_classes, 4320, embedding_dim=400).to(device)
     train_and_eval(model, trainloader, testloader, device=device, lr=0.001, n_epoch=10)
     dna_embeddings = get_embedding(model, all_X)
 

@@ -1,9 +1,12 @@
 import torch.nn as nn
 import torch.nn.functional as F
 from opt_einsum.backends import torch
+from torch import optim
 import torch
+import numpy as np
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
+from bert_extract_dna_feature import remove_extra_pre_fix
 
 
 class Bert_With_Prediction_Head(nn.Module):
@@ -28,6 +31,11 @@ class Bert_With_Prediction_Head(nn.Module):
         feature = x
         x = self.lin2(x)
         return x, feature
+
+    def load_bert_model(self, path_to_ckpt):
+        state_dict = torch.load(path_to_ckpt, map_location=torch.device("cpu"))
+        state_dict = remove_extra_pre_fix(state_dict)
+        self.bert_model.load_state_dict(state_dict)
 
 
 def categorical_cross_entropy(outputs, target, num_classes=1213):
@@ -60,14 +68,8 @@ def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12)
             # zero the parameter gradients
             optimizer.zero_grad()
             # forward + backward + optimize
-            # print(inputs)
-            # exit()
-            # print("[WARNING] We might need to update how the model is called on inputs based on tokenizer.")
             outputs, _ = model(inputs)
 
-            # print(outputs[0])
-            # print(labels.shape)
-            # exit()
             # loss = criterion(outputs, labels)
 
             loss = categorical_cross_entropy(outputs, labels)
