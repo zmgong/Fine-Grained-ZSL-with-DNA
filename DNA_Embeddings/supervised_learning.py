@@ -20,15 +20,19 @@ random.seed(10)
 class DNADataset(Dataset):
     def __init__(self, barcodes, labels, tokenizer):
         # Vocabulary
-        self.tokenizer = tokenizer
         self.barcodes = barcodes
         self.labels = labels
+
+        self.tokenized = tokenizer(self.barcodes.tolist())
 
     def __len__(self):
         return len(self.barcodes)
 
     def __getitem__(self, idx):
-        processed_barcode = torch.tensor(self.tokenizer(self.barcodes[idx]), dtype=torch.int64)
+        if not isinstance(self.tokenized[idx], torch.Tensor):
+            processed_barcode = torch.tensor(self.tokenized[idx], dtype=torch.int64)
+        else:
+            processed_barcode = self.tokenized[idx].clone().detach().to(dtype=torch.int64)
         return processed_barcode, self.labels[idx]
 
 
@@ -40,7 +44,6 @@ def load_data(args):
     else:
         barcodes = extract_clean_barcode_list(x["nucleotides"])
     labels = x["labels"].squeeze() - 1
-
 
     stratified_split = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
     train_index = None
@@ -77,7 +80,6 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
                 _, x = model(x)
                 x = x.squeeze()
 
-
             x = x.cpu().numpy()
 
             if str(label) not in dict_emb.keys():
@@ -91,22 +93,29 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
     class_embed = class_embed.T.squeeze()
 
     if args.using_aligned_barcode:
-        np.savetxt(os.path.join(args.output_dir, "dna_embedding_supervised_fine_tuned_pablo_bert_aligned.csv"), class_embed, delimiter=",")
+        np.savetxt(
+            os.path.join(args.output_dir, "dna_embedding_supervised_fine_tuned_pablo_bert_aligned.csv"),
+            class_embed,
+            delimiter=",",
+        )
     else:
-        np.savetxt(os.path.join(args.output_dir, "dna_embedding_supervised_fine_tuned_pablo_bert.csv"),
-                   class_embed, delimiter=",")
-
+        np.savetxt(
+            os.path.join(args.output_dir, "dna_embedding_supervised_fine_tuned_pablo_bert.csv"),
+            class_embed,
+            delimiter=",",
+        )
 
     print("DNA embeddings is saved.")
 
-def construct_dataloader(X_train, X_val, y_train, y_val, batch_size, tokenizer):
 
+def construct_dataloader(X_train, X_val, y_train, y_val, batch_size, tokenizer):
     train_dataset = DNADataset(X_train, y_train, tokenizer)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
     val_dataset = DNADataset(X_val, y_val, tokenizer)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
     return train_dataloader, val_dataloader
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -116,17 +125,19 @@ if __name__ == "__main__":
     parser.add_argument("--output_dir", type=str, default="../data/INSECT/")
     parser.add_argument("--using_aligned_barcode", default=False, action="store_true")
     parser.add_argument("--n_epoch", default=12, type=int)
+    parser.add_argument("-k", "--kmer", default=6, type=int, dest="k", help="k-mer value for tokenization")
+    parser.add_argument(
+        "--batch-size", default=32, type=int, dest="batch_size", help="batch size for supervised training"
+    )
 
     args = parser.parse_args()
 
-    x_train, y_train, x_val, y_val, barcodes, labels, num_classes = load_data(args)
+    x_train, y_train, x_val, y_val, barcodes, laels, num_classes = load_data(args)
 
-    model, sequence_pipeline = load_model(args, classification_head=True, num_classes=num_classes)
+    model, sequence_pipeline = load_model(args, k=args.k, classification_head=True, num_classes=num_classes)
 
-    train_loader, val_loader = construct_dataloader(x_train, x_val, y_train, y_val, 32, sequence_pipeline)
+    train_loader, val_loader = construct_dataloader(x_train, x_val, y_train, y_val, args.batch_size, sequence_pipeline)
 
-    train_and_eval(model, train_loader, val_loader, device=device, n_epoch=args.n_epoch)
+    train_and_eval(model, train_loader, val_loader, device=device, n_epoch=args.n_epoch, lr=1e-4)
 
     extract_and_save_class_level_feature(args, model, sequence_pipeline, barcodes, labels)
-
-

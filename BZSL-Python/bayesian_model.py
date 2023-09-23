@@ -17,6 +17,16 @@ class Model(object):
         self.pca_dim = opt.pca_dim
         self.tuning = opt.tuning
         self.alignment = opt.alignment
+        self.embeddings = opt.embeddings
+
+        if opt.m and opt.m % self.pca_dim != 0:
+            raise ValueError(f"m should be a multiple of the PCA dimension ({self.pca_dim}), but got {self.m} instead.")
+
+        self.k_0 = opt.k_0
+        self.k_1 = opt.k_1 
+        self.m = opt.m
+        self.s = opt.s
+        self.K = opt.K
 
     ### Claculating class mean and covariance priors ###
     def calculate_priors(self, xtrain, ytrain, model_v="unconstrained"):
@@ -282,7 +292,9 @@ class Model(object):
     def hyperparameter_tuning(self, constrained=False):
         # Default # features for PCA id Unconstrained model selected
 
-        dataloader = data_loader(self.datapath, self.dataset, self.side_info, self.tuning, self.alignment)
+        dataloader = data_loader(
+            self.datapath, self.dataset, self.side_info, self.tuning, self.alignment, self.embeddings
+        )
 
         # load attribute
 
@@ -390,26 +402,39 @@ class Model(object):
 
         if self.tuning:
             att, k_0, k_1, m, s, K = self.hyperparameter_tuning(constrained=False)
-            dataloader = data_loader(self.datapath, self.dataset, self.side_info, False, alignment=self.alignment)
+            dataloader = data_loader(
+                self.datapath,
+                self.dataset,
+                self.side_info,
+                False,
+                alignment=self.alignment,
+                embeddings=self.embeddings,
+            )
         else:
-            dataloader = data_loader(self.datapath, self.dataset, self.side_info, False, alignment=self.alignment)
+            dataloader = data_loader(
+                self.datapath,
+                self.dataset,
+                self.side_info,
+                False,
+                alignment=self.alignment,
+                embeddings=self.embeddings,
+            )
             att, k_0, k_1, m, s, K = dataloader.load_tuned_params()
+            if self.k_0 is not None:
+                k_0 = self.k_0
+            if self.k_1 is not None:
+                k_1 = self.k_1
+            if self.m is not None:
+                m = self.m
+            if self.s is not None:
+                s = self.s
+            if self.K is not None:
+                K = self.K
 
         """
         To reproduce the results from paper please use the following function to laod the 
         parameters obtained by CV
         """
-
-        """
-        You may alter the hyperparameters by commenting out the section below. If you want to tune the parameters, just set tuning 
-        to True and write a simple for loop to go through the hyperparameters. Matlab version of the code already has tuning option.
-        """
-        # k_0 = 1.0
-        # k_1 = 10
-        # m = 500 * self.pca_dim
-        # s = 10
-        # K = 1
-        # att = dataloader.side_info
 
         xtrain, ytrain, xtest_seen, ytest_seen, xtest_unseen, ytest_unseen = dataloader.data_split()
         if self.pca_dim:

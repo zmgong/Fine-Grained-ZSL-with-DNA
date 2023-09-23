@@ -74,14 +74,14 @@ def load_model(args, *, k: int = 6, classification_head: bool = False, num_class
 
     print("Initializing the model . . .")
 
-    if args.model == "bioscanbert":  # FIXME: not sure what to call this ':D
+    if args.model == "bioscanbert":
         tokenizer = kmer_tokenizer(k, stride=k)
         sequence_pipeline = lambda x: [0, *vocab(tokenizer(pad(x)))]
 
         configuration = BertConfig(vocab_size=vocab_size, output_hidden_states=True)
 
         model = BertForMaskedLM(configuration)
-        state_dict = torch.load(args.checkpoint)
+        state_dict = torch.load(args.checkpoint, map_location=torch.device("cpu"))
         state_dict = remove_extra_pre_fix(state_dict)
         model.load_state_dict(state_dict)
 
@@ -90,24 +90,34 @@ def load_model(args, *, k: int = 6, classification_head: bool = False, num_class
         configuration = BertConfig.from_pretrained(
             pretrained_model_name_or_path=args.checkpoint, output_hidden_states=True
         )
-        # tokenizer = kmer_tokenizer(k, stride=k)
-        # sequence_pipeline = lambda x: vocab(tokenizer(pad(x)))
-        tokenizer = DNATokenizer.from_pretrained(args.checkpoint, do_lower_case=False)
-        pad_token = tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0]
-        sequence_pipeline = get_dnabert_tokenizer(tokenizer, pad_token, pad_token_segment_id=0, max_len=max_len)
+        if getattr(args, "use_pablo_tokenizer", False):
+            tokenizer = kmer_tokenizer(k, stride=k)
+            sequence_pipeline = lambda x: vocab(tokenizer(pad(x)))
+        else:
+            tokenizer = DNATokenizer.from_pretrained(args.checkpoint, do_lower_case=False)
+            pad_token = tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0]
+            sequence_pipeline = get_dnabert_tokenizer(tokenizer, pad_token, pad_token_segment_id=0, max_len=max_len)
 
         model = BertForMaskedLM.from_pretrained(pretrained_model_name_or_path=args.checkpoint, config=configuration)
 
     elif args.model == "dnabert2":
-        tokenizer = AutoTokenizer.from_pretrained("zhihan1996/DNABERT-2-117M", trust_remote_code=True)
-        sequence_pipeline = lambda x: tokenizer(x, return_tensors="pt")["input_ids"]
-        model = AutoModel.from_pretrained("zhihan1996/DNABERT-2-117M", trust_remote_code=True)
-
+        checkpoint = args.checkpoint if args.checkpoint else "zhihan1996/DNABERT-2-117M"
+        if getattr(args, "use_pablo_tokenizer", False):
+            tokenizer = kmer_tokenizer(k, stride=k)
+            sequence_pipeline = lambda x: vocab(tokenizer(pad(x)))
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(checkpoint, trust_remote_code=True)
+            sequence_pipeline = lambda x: tokenizer(
+                x,
+                return_tensors="pt",
+                padding="longest",
+            )["input_ids"]
+        model = AutoModel.from_pretrained(checkpoint, trust_remote_code=True)
     else:
         raise ValueError(f"Could not parse model name: {args.model}")
 
     if classification_head:
-        model = Bert_With_Prediction_Head(out_feature=num_classes, bert_model=model)
+        model = Bert_With_Prediction_Head(out_feature=num_classes, bert_model=model, model_type=args.model)
 
     model.to(device)
 

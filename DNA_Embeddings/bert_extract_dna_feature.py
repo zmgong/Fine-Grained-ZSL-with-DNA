@@ -55,13 +55,6 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
             if args.model == "dnabert2":
                 x = sequence_pipeline(_barcode).to(device)
                 x = model(x)[-1]
-            elif args.model == "dnabert":
-                x = {
-                    k: torch.tensor(v, dtype=torch.int64).unsqueeze(0).to(device)
-                    for k, v in sequence_pipeline(_barcode).items()
-                }
-                x = model(**x).hidden_states[-1]
-                x = x.mean(1)  # Global Average Pooling excluding CLS token
             else:
                 x = torch.tensor(sequence_pipeline(_barcode), dtype=torch.int64).unsqueeze(0).to(device)
                 x = model(x).hidden_states[-1]
@@ -85,12 +78,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_path", default="../data/INSECT/res101.mat", type=str)
     parser.add_argument("--model", choices=["bioscanbert", "dnabert", "dnabert2"], default="bioscanbert")
-    parser.add_argument("--checkpoint", default="bert_checkpoint/model_44.pth", type=str)
+    parser.add_argument("--checkpoint", default=None, type=str)
     parser.add_argument("--output", type=str, default="../data/INSECT/dna_embedding.csv")
-    parser.add_argument("--using_aligned_barcode", default=False, action="store_true")
+    parser.add_argument("--using_aligned_barcode", "--alignment", default=False, action="store_true")
+    parser.add_argument("-k", "--kmer", default=6, type=int, dest="k", help="k-mer value for tokenization")
+    parser.add_argument(
+        "--pablo-tokenizer",
+        action="store_true",
+        dest="use_pablo_tokenizer",
+        help="if specified, uses Pablo's non-overlapping k-mer tokenizer instead of the default tokenizer",
+    )
     args = parser.parse_args()
 
-    model, sequence_pipeline = load_model(args)
+    model, sequence_pipeline = load_model(args, k=args.k)
     model.eval()
 
     barcodes, labels = load_data(args)

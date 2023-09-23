@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 
 
 class data_loader(object):
-    def __init__(self, datapath, dataset, side_info="original", tuning=False, alignment=True):
+    def __init__(self, datapath, dataset, side_info="original", tuning=False, alignment=True, embeddings=None):
         print("The current working directory is")
         print(os.getcwd())
         self.datapath = datapath  # '../data/'
@@ -19,24 +19,13 @@ class data_loader(object):
         self.side_info_source = side_info
         self.tuning = tuning
         self.alignment = alignment
+        self.embeddings = self.get_embeddings_path(embeddings)
 
         self.read_matdata()
 
-    def read_matdata(self):
-        path = os.path.join(self.datapath, self.dataset, "res101.mat")
-        data_mat = sio.loadmat(path)
-        self.features = data_mat["features"].T
-        print("self.feature: ")
-
-        self.labels = data_mat["labels"].ravel() - 1
-        path = os.path.join(self.datapath, self.dataset, "att_splits.mat")
-        splits_mat = sio.loadmat(path)
-
-        self.trainval_loc = splits_mat["trainval_loc"].ravel() - 1
-        self.train_loc = splits_mat["train_loc"].ravel() - 1
-        self.val_unseen_loc = splits_mat["val_loc"].ravel() - 1
-        self.test_seen_loc = splits_mat["test_seen_loc"].ravel() - 1
-        self.test_unseen_loc = splits_mat["test_unseen_loc"].ravel() - 1
+    def get_embeddings_path(self, embeddings: str):
+        if embeddings:
+            return embeddings
 
         if self.side_info_source not in ["original", "w2v", "dna", "dna_pablo_bert", "dna_dnabert", "dna_dnabert2"]:
             print(
@@ -54,55 +43,33 @@ class data_loader(object):
             if self.side_info_source == "dna":
                 if self.alignment is True:
                     print("INSECT: Aligned")
-                    self.side_info = np.genfromtxt(
-                        os.path.join(self.datapath, self.dataset, "dna_embedding.csv"), delimiter=","
-                    )
+                    return os.path.join(self.datapath, self.dataset, "dna_embedding.csv")
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(
-                        os.path.join(self.datapath, self.dataset, "dna_embedding_no_alignment.csv"), delimiter=","
-                    )
+                    return os.path.join(self.datapath, self.dataset, "dna_embedding_no_alignment.csv")
             elif self.side_info_source == "dna_pablo_bert":
                 if self.alignment is True:
                     print("INSECT: Aligned")
-                    self.side_info = np.genfromtxt(
-                        os.path.join(self.datapath, self.dataset, "dna_embedding_using_bert_of_pablo_team.csv"),
-                        delimiter=",",
-                    )
+                    return os.path.join(self.datapath, self.dataset, "dna_embedding_using_bert_of_pablo_team.csv")
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(
-                        os.path.join(
-                            self.datapath, self.dataset, "dna_embedding_using_bert_of_pablo_team_no_alignment.csv"
-                        ),
-                        delimiter=",",
+                    return os.path.join(
+                        self.datapath, self.dataset, "dna_embedding_using_bert_of_pablo_team_no_alignment.csv"
                     )
             elif self.side_info_source == "dna_dnabert":
                 if self.alignment is True:
                     print("INSECT: Aligned")
-                    self.side_info = np.genfromtxt(
-                        os.path.join(self.datapath, self.dataset, "dna_embedding_insect_dnabert_aligned.csv"),
-                        delimiter=",",
-                    )
+                    return os.path.join(self.datapath, self.dataset, "dna_embedding_insect_dnabert_aligned.csv")
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(
-                        os.path.join(self.datapath, self.dataset, "dna_embedding_insect_dnabert.csv"),
-                        delimiter=",",
-                    )
+                    return os.path.join(self.datapath, self.dataset, "dna_embedding_supervised_fine_tuned_dnabert.csv")
             elif self.side_info_source == "dna_dnabert2":
                 if self.alignment is True:
                     print("INSECT: Aligned")
-                    self.side_info = np.genfromtxt(
-                        os.path.join(self.datapath, self.dataset, "dna_embedding_insect_dnabert2_aligned.csv"),
-                        delimiter=",",
-                    )
+                    return os.path.join(self.datapath, self.dataset, "dna_embedding_insect_dnabert2_aligned.csv")
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(
-                        os.path.join(self.datapath, self.dataset, "dna_embedding_insect_dnabert2.csv"), delimiter=","
-                    )
-
+                    return os.path.join(self.datapath, self.dataset, "dna_embedding_insect_dnabert2.csv")
         # Origin
         # self.side_info = splits_mat['att']
         # if self.dataset=='CUB':
@@ -126,6 +93,24 @@ class data_loader(object):
                     self.side_info = np.genfromtxt(
                         os.path.join(self.datapath, self.dataset, "dna_embedding_no_alignment.csv"), delimiter=","
                     )
+
+    def read_matdata(self):
+        path = os.path.join(self.datapath, self.dataset, "res101.mat")
+        data_mat = sio.loadmat(path)
+        self.features = data_mat["features"].T
+        print("self.feature: ")
+
+        self.labels = data_mat["labels"].ravel() - 1
+        path = os.path.join(self.datapath, self.dataset, "att_splits.mat")
+        splits_mat = sio.loadmat(path)
+
+        self.trainval_loc = splits_mat["trainval_loc"].ravel() - 1
+        self.train_loc = splits_mat["train_loc"].ravel() - 1
+        self.val_unseen_loc = splits_mat["val_loc"].ravel() - 1
+        self.test_seen_loc = splits_mat["test_seen_loc"].ravel() - 1
+        self.test_unseen_loc = splits_mat["test_unseen_loc"].ravel() - 1
+
+        self.side_info = np.genfromtxt(self.embeddings, delimiter=",")
 
     def data_split(self):
         if self.tuning:

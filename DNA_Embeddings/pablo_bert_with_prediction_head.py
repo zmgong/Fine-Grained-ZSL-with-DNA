@@ -7,10 +7,11 @@ from tqdm import tqdm
 
 
 class Bert_With_Prediction_Head(nn.Module):
-    def __init__(self, out_feature, bert_model, dim=768, embedding_dim=768):
+    def __init__(self, out_feature, bert_model, dim=768, embedding_dim=768, model_type: str = "bioscanbert"):
         super().__init__()
 
         self.bert_model = bert_model
+        self.model_type = model_type
 
         self.lin1 = nn.Linear(dim, embedding_dim)
         self.lin2 = nn.Linear(embedding_dim, out_feature)
@@ -18,10 +19,10 @@ class Bert_With_Prediction_Head(nn.Module):
         self.dropout = nn.Dropout(0.2)
 
     def forward(self, x):
-        x = self.bert_model(x).hidden_states[-1].mean(dim=1)
-        # print(dir(x))
-        # exit()
-        #
+        if self.model_type == "dnabert2":
+            x = self.bert_model(x)[-1]
+        else:
+            x = self.bert_model(x).hidden_states[-1].mean(dim=1)
 
         x = self.tanh(self.dropout(self.lin1(x)))
         feature = x
@@ -47,6 +48,7 @@ def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12)
     print("start training")
     loss = None
     for epoch in range(n_epoch):  # loop over the dataset multiple times
+        model.train()
         running_loss = 0.0
         pbar = tqdm(enumerate(trainloader, 0), total=len(trainloader))
         for i, (inputs, labels) in pbar:
@@ -60,7 +62,7 @@ def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12)
             # forward + backward + optimize
             # print(inputs)
             # exit()
-            print("[WARNING] We might need to update how the model is called on inputs based on tokenizer.")
+            # print("[WARNING] We might need to update how the model is called on inputs based on tokenizer.")
             outputs, _ = model(inputs)
 
             # print(outputs[0])
@@ -77,6 +79,7 @@ def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12)
             running_loss += loss.item()
 
         with torch.no_grad():
+            model.eval()
             train_correct = 0
             train_total = 0
             for data in trainloader:
