@@ -35,7 +35,15 @@ of triton we need is supported.
 
 ### Fine-tuning
 
-To fine tune the model, run the following:
+To fine tune the model (Pablo's BERT or DNABERT), run the following:
+```
+# Pablo's BERT
+python supervised_learning.py --input_path path/to/res101.mat --model bioscanbert --output_dir path/to/output/ --n_epoch 12
+
+# DNABERT
+python supervised_learning.py --input_path path/to/res101.mat --model dnabert --output_dir path/to/output/ --n_epoch 12
 ```
 
-```
+For DNABERT-2, you will need to use the [DNABERT-2 repository](https://github.com/Zhihan1996/DNABERT_2) and apply 
+fine-tuning with the data files (`train.csv` and `dev.csv`) created at 
+`/project/3dlg-hcvc/bioscan/bzsl/dnabert2_fine_tuning/`.
