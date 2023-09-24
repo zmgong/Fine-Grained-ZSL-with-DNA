@@ -15,10 +15,10 @@ To generate DNA embeddings on the INSECT dataset, run a command similar to one o
 python bert_extract_dna_feature.py --input_path ../../data/INSECT/res101.mat --model bioscanbert --checkpoint ../../data/bioscanbert/latest_model_5mer.pth --output ../../data/INSECT/dna_embedding_insect_bioscanbert_new.csv -k 5
 
 # DNABERT
-python -m DNA_Embeddings.bert_extract_dna_feature --model dnabert --checkpoint ../data/dnabert_pretrained --output ../data/INSECT/dna_embedding_insect_dnabert.csv
+python bert_extract_dna_feature.py --model dnabert --checkpoint ../data/dnabert_pretrained --output ../data/INSECT/dna_embedding_insect_dnabert.csv
 
 # DNABERT-2
-python -m DNA_Embeddings.bert_extract_dna_feature --model dnabert2 --output ../data/INSECT/dna_embedding_insect_dnabert2.csv
+python bert_extract_dna_feature.py --model dnabert2 --output ../data/INSECT/dna_embedding_insect_dnabert2.csv
 ```
 
 Note that for DNABERT-2, I ran into some issues with `trans_b` no longer being a supported parameter for `tl.dot`, and
