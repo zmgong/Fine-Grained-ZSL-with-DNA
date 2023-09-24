@@ -128,8 +128,8 @@ class data_loader(object):
         self.val_unseen_loc = splits_mat["val_loc"].ravel() - 1
         self.test_seen_loc = splits_mat["test_seen_loc"].ravel() - 1
         self.test_unseen_loc = splits_mat["test_unseen_loc"].ravel() - 1
-
-        self.side_info = np.genfromtxt(self.embeddings, delimiter=",")
+        if self.side_info is None:
+            self.side_info = np.genfromtxt(self.embeddings, delimiter=",")
 
     def data_split(self):
         if self.tuning:

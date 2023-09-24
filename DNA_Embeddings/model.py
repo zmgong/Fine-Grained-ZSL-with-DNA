@@ -49,6 +49,7 @@ def remove_extra_pre_fix(state_dict):
 def get_dnabert_tokenizer(tokenizer, pad_token, pad_token_segment_id=0, max_len=512):
     def tokenize(inp):
         """Design adapted from https://github.com/jerryji1993/DNABERT."""
+        inp = split_input_barcode_for_dnabert(inp)
         inputs = tokenizer.encode_plus(inp, max_length=max_len, add_special_tokens=True)
         input_ids, token_type_ids = inputs["input_ids"], inputs["token_type_ids"]
         attention_mask = [1 for _ in range(len(input_ids))]
@@ -63,6 +64,17 @@ def get_dnabert_tokenizer(tokenizer, pad_token, pad_token_segment_id=0, max_len=
 
     return tokenize
 
+def split_input_barcode_for_dnabert(barcode):
+    split_barcode = ""
+    count = 0
+    for i in barcode:
+        count = count + 1
+        split_barcode = split_barcode + i
+        if count == 6:
+            count = 0
+            split_barcode = split_barcode + " "
+    barcode = split_barcode
+    return barcode
 
 def load_model(args, *, k: int = 6, classification_head: bool = False, num_classes: Optional[int] = None):
     kmer_iter = (["".join(kmer)] for kmer in product("ACGT", repeat=k))

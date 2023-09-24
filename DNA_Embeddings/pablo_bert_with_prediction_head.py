@@ -6,7 +6,7 @@ import torch
 import numpy as np
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
-from bert_extract_dna_feature import remove_extra_pre_fix
+
 
 
 class Bert_With_Prediction_Head(nn.Module):
@@ -46,6 +46,13 @@ def categorical_cross_entropy(outputs, target, num_classes=1213):
     loss = (-pred_label * target_label).sum(dim=1).mean()
     return loss
 
+def remove_extra_pre_fix(state_dict):
+    new_state_dict = {}
+    for key, value in state_dict.items():
+        if key.startswith("module."):
+            key = key[7:]
+        new_state_dict[key] = value
+    return new_state_dict
 
 def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12):
     criterion = nn.CrossEntropyLoss()

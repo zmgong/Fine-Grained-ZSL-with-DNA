@@ -56,7 +56,9 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
                 x = sequence_pipeline(_barcode).to(device)
                 x = model(x)[-1]
             else:
-                x = torch.tensor(sequence_pipeline(_barcode), dtype=torch.int64).unsqueeze(0).to(device)
+
+                x = torch.tensor(sequence_pipeline(_barcode)['input_ids'], dtype=torch.int64).unsqueeze(0).to(device)
+
                 x = model(x).hidden_states[-1]
                 x = x.mean(1)  # Global Average Pooling excluding CLS token
             x = x.cpu().numpy()
@@ -64,7 +66,6 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
             if str(label) not in dict_emb.keys():
                 dict_emb[str(label)] = []
             dict_emb[str(label)].append(x)
-
     class_embed = []
     for i in all_label:
         class_embed.append(np.sum(dict_emb[str(i)], axis=0) / len(dict_emb[str(i)]))
