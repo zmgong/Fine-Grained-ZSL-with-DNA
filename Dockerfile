@@ -18,18 +18,20 @@ RUN chown -R $UNAME:$UNAME /home/$UNAME
 
 # install Python
 RUN apt-get update -y && \
-    apt-get install -y software-properties-common curl make vim && \
+    apt-get install -y software-properties-common build-essential curl make vim && \
     add-apt-repository -y ppa:deadsnakes/ppa && \
     apt-get update -y && \
-    apt-get install -y python3.10 python3.10-dev python3.10-distutils
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
+    apt-get install -y python3.11 python3.11-dev python3.11-distutils
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
 
 USER $UNAME
 
 # install python packages
+# note: triton is uninstalled because it has really weird version dependencies and backwards incompatibility
 COPY --chown=$UNAME "$REQUIREMENTS_PATH" /tmp/requirements.txt
-RUN python3.10 -m pip install --no-cache-dir --upgrade setuptools distlib pip && \
-    python3.10 -m pip install --no-cache-dir -r /tmp/requirements.txt && \
+RUN python3.11 -m pip install --no-cache-dir --upgrade setuptools distlib pip && \
+    python3.11 -m pip install --no-cache-dir -r /tmp/requirements.txt && \
+    python3.11 -m pip uninstall -y triton && \
     rm /tmp/requirements.txt
 
 # copy files

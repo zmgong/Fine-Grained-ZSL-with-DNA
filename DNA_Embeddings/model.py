@@ -11,12 +11,21 @@ from pablo_bert_with_prediction_head import Bert_With_Prediction_Head
 device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
 
 
-class kmer_tokenizer(object):
-    def __init__(self, k, stride=1):
+class KmerTokenizer:
+    """
+    Applies tokenization based on k-mers
+    """
+
+    def __init__(self, k: int, stride: int = 1):
+        """
+        :param k: size of k-mers for tokens
+        :param stride: value by which to shift k-mers. For instance, a shift of 1 represents completely overlapping
+        k-mers, whereas a shift of k represents completely non-overlapping k-mers. Defaults to 1
+        """
         self.k = k
         self.stride = stride
 
-    def __call__(self, dna_sequence):
+    def __call__(self, dna_sequence: str) -> list[str]:
         tokens = []
         for i in range(0, len(dna_sequence) - self.k + 1, self.stride):
             k_mer = dna_sequence[i : i + self.k]
@@ -76,7 +85,7 @@ def get_dnabert_encoder(tokenizer, max_len: int, k: int = 6):
                 for x in preprocessed
             ]
         else:
-            return tokenizer.encode_plus(barcode, max_length=max_len, add_special_tokens=True, pad_to_max_length=True)[
+            return tokenizer.encode_plus(preprocessed, max_length=max_len, add_special_tokens=True, pad_to_max_length=True)[
                 "input_ids"
             ]
 
@@ -94,7 +103,7 @@ def load_model(args, *, k: int = 6, classification_head: bool = False, num_class
     print("Initializing the model . . .")
 
     if args.model == "bioscanbert":
-        tokenizer = kmer_tokenizer(k, stride=k)
+        tokenizer = KmerTokenizer(k, stride=k)
         sequence_pipeline = lambda x: [0, *vocab(tokenizer(pad(x)))]
 
         configuration = BertConfig(vocab_size=vocab_size, output_hidden_states=True)
@@ -110,7 +119,7 @@ def load_model(args, *, k: int = 6, classification_head: bool = False, num_class
             pretrained_model_name_or_path=args.checkpoint, output_hidden_states=True
         )
         if getattr(args, "use_pablo_tokenizer", False):
-            tokenizer = kmer_tokenizer(k, stride=k)
+            tokenizer = KmerTokenizer(k, stride=k)
             sequence_pipeline = lambda x: vocab(tokenizer(pad(x)))
         else:
             tokenizer = DNATokenizer.from_pretrained(args.checkpoint, do_lower_case=False)
@@ -121,7 +130,7 @@ def load_model(args, *, k: int = 6, classification_head: bool = False, num_class
     elif args.model == "dnabert2":
         checkpoint = args.checkpoint if args.checkpoint else "zhihan1996/DNABERT-2-117M"
         if getattr(args, "use_pablo_tokenizer", False):
-            tokenizer = kmer_tokenizer(k, stride=k)
+            tokenizer = KmerTokenizer(k, stride=k)
             sequence_pipeline = lambda x: vocab(tokenizer(pad(x)))
         else:
             tokenizer = AutoTokenizer.from_pretrained(checkpoint, trust_remote_code=True)
