@@ -54,7 +54,9 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
             _barcode = barcodes[i]
             if args.model == "dnabert2":
                 x = sequence_pipeline(_barcode).to(device)
-                x = model(x)[-1]
+                x = model(x)[0]
+                # x = torch.mean(x[0], dim=0)  # mean pooling
+                x = torch.max(x[0], dim=0)[0]  # max pooling
             else:
                 x = torch.tensor(sequence_pipeline(_barcode), dtype=torch.int64).unsqueeze(0).to(device)
                 x = model(x).hidden_states[-1]

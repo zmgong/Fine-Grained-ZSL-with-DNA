@@ -1,3 +1,4 @@
+import json
 import time
 
 import numpy as np
@@ -18,6 +19,7 @@ class Model(object):
         self.tuning = opt.tuning
         self.alignment = opt.alignment
         self.embeddings = opt.embeddings
+        self.output = opt.output
 
         if opt.m and opt.m % self.pca_dim != 0:
             raise ValueError(f"m should be a multiple of the PCA dimension ({self.pca_dim}), but got {self.m} instead.")
@@ -468,5 +470,17 @@ class Model(object):
             "BSeen acc: %.2f%% Unseen acc: %.2f%%, Harmonic mean: %.2f%%"
             % (gzsl_seen_acc * 100, gzsl_unseen_acc * 100, H * 100)
         )
+
+        if self.output:
+            with open(self.output, "w") as f:
+                json.dump(
+                    {
+                        "parameters": {"k0": k_0, "k1": k_1, "m": m, "s": s, "K": K}, 
+                        "results": {"seen_acc": gzsl_seen_acc, "unseen_acc": gzsl_unseen_acc, "harmonic_mean": H}
+                    }, 
+                    f,
+                    indent=2,
+                )
+
         time_e = time.time()
         print("time cost: " + str(time_e - time_s))
