@@ -41,8 +41,11 @@ conda activate bzsl
 ```
 Then navigate to the `BZSL-Python` folder and execute the folowing code:
 ```
-python Demo.py --dataset CUB --side_info dna
+# DNABERT
+python Demo.py --datapath path/to/dataset/folder --dataset INSECT --side_info dna_dnabert --embeddings path/to/embeddings.csv --tuning
 ```
+
+Note that the path for the dataset folder should contain a folder named by the dataset (i.e. `INSECT` or `CUB`), which contains minimally the res101.mat and att_splits.mat files for the input image features and split metadata, respectively. Additionally, if you do not specify the embeddings path, then a default path will be assumed and searched for in the dataset folder. You can find the default paths in utils.py.
 
 Main options for input arguments  are listed below (for the detailed list please check the code):
 ```

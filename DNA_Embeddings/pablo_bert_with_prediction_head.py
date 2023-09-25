@@ -8,7 +8,6 @@ from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
 
 
-
 class Bert_With_Prediction_Head(nn.Module):
     def __init__(self, out_feature, bert_model, dim=768, embedding_dim=768, model_type: str = "bioscanbert"):
         super().__init__()
@@ -46,6 +45,7 @@ def categorical_cross_entropy(outputs, target, num_classes=1213):
     loss = (-pred_label * target_label).sum(dim=1).mean()
     return loss
 
+
 def remove_extra_pre_fix(state_dict):
     new_state_dict = {}
     for key, value in state_dict.items():
@@ -53,6 +53,7 @@ def remove_extra_pre_fix(state_dict):
             key = key[7:]
         new_state_dict[key] = value
     return new_state_dict
+
 
 def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12):
     criterion = nn.CrossEntropyLoss()

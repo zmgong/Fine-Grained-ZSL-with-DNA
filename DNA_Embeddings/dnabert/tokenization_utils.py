@@ -373,7 +373,6 @@ class PreTrainedTokenizer(object):
 
         """
         print("="*60)
-        print(cls)
         return cls._from_pretrained(*inputs, **kwargs)
 
     @classmethod

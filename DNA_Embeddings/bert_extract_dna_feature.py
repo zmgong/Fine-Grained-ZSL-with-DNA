@@ -56,9 +56,7 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
                 x = sequence_pipeline(_barcode).to(device)
                 x = model(x)[-1]
             else:
-
-                x = torch.tensor(sequence_pipeline(_barcode)['input_ids'], dtype=torch.int64).unsqueeze(0).to(device)
-
+                x = torch.tensor(sequence_pipeline(_barcode), dtype=torch.int64).unsqueeze(0).to(device)
                 x = model(x).hidden_states[-1]
                 x = x.mean(1)  # Global Average Pooling excluding CLS token
             x = x.cpu().numpy()

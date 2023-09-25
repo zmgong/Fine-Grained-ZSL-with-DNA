@@ -46,35 +46,42 @@ def remove_extra_pre_fix(state_dict):
     return new_state_dict
 
 
-def get_dnabert_tokenizer(tokenizer, pad_token, pad_token_segment_id=0, max_len=512):
-    def tokenize(inp):
-        """Design adapted from https://github.com/jerryji1993/DNABERT."""
-        inp = split_input_barcode_for_dnabert(inp)
-        inputs = tokenizer.encode_plus(inp, max_length=max_len, add_special_tokens=True)
-        input_ids, token_type_ids = inputs["input_ids"], inputs["token_type_ids"]
-        attention_mask = [1 for _ in range(len(input_ids))]
+def split_input_barcode_for_dnabert(barcode: str, k: int = 6) -> str:
+    """
+    Splits barcode input into overlapping k-mers (stride=1), e.g.
 
-        # apply padding
-        padding_length = max_len - len(input_ids)
-        input_ids = input_ids + ([pad_token] * padding_length)
-        attention_mask = attention_mask + [0 for _ in range(padding_length)]
-        token_type_ids = token_type_ids + [pad_token_segment_id for _ in range(padding_length)]
+    >>> split_input_barcode_for_dnabert("ACGAATCGA", k=6)
 
-        return {"input_ids": input_ids, "attention_mask": attention_mask, "token_type_ids": token_type_ids}
+    "ACGAAT CGAATC GAATCG AATCGA"
 
-    return tokenize
+    :param barcode: input barcode string
+    :param k: k-mer size
+    :return: barcode with splits by whitespace into k-mers
+    """
+    if isinstance(barcode, list):
+        return [split_input_barcode_for_dnabert(bc, k) for bc in barcode]
 
-def split_input_barcode_for_dnabert(barcode):
-    split_barcode = ""
-    count = 0
-    for i in barcode:
-        count = count + 1
-        split_barcode = split_barcode + i
-        if count == 6:
-            count = 0
-            split_barcode = split_barcode + " "
-    barcode = split_barcode
-    return barcode
+    return " ".join([barcode[idx : idx + k] for idx in range(len(barcode) - k + 1)])
+
+
+def get_dnabert_encoder(tokenizer, max_len: int, k: int = 6):
+    def dnabert_encoder(barcode: str):
+        preprocessed = split_input_barcode_for_dnabert(barcode, k)
+
+        if isinstance(preprocessed, list):
+            return [
+                tokenizer.encode_plus(x, max_length=max_len, add_special_tokens=True, pad_to_max_length=True)[
+                    "input_ids"
+                ]
+                for x in preprocessed
+            ]
+        else:
+            return tokenizer.encode_plus(barcode, max_length=max_len, add_special_tokens=True, pad_to_max_length=True)[
+                "input_ids"
+            ]
+
+    return dnabert_encoder
+
 
 def load_model(args, *, k: int = 6, classification_head: bool = False, num_classes: Optional[int] = None):
     kmer_iter = (["".join(kmer)] for kmer in product("ACGT", repeat=k))
@@ -107,8 +114,7 @@ def load_model(args, *, k: int = 6, classification_head: bool = False, num_class
             sequence_pipeline = lambda x: vocab(tokenizer(pad(x)))
         else:
             tokenizer = DNATokenizer.from_pretrained(args.checkpoint, do_lower_case=False)
-            pad_token = tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0]
-            sequence_pipeline = get_dnabert_tokenizer(tokenizer, pad_token, pad_token_segment_id=0, max_len=max_len)
+            sequence_pipeline = get_dnabert_encoder(tokenizer, max_len, k)
 
         model = BertForMaskedLM.from_pretrained(pretrained_model_name_or_path=args.checkpoint, config=configuration)
 

@@ -43,53 +43,53 @@ class data_loader(object):
             if self.side_info_source == 'dna':
                 if self.alignment is True:
                     print("INSECT: Aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding.csv')
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_no_alignment.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding_no_alignment.csv')
             elif self.side_info_source == 'dna_pablo_bert':
                 if self.alignment is True:
                     print("INSECT: Aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_using_bert_of_pablo_team.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding_using_bert_of_pablo_team.csv')
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_using_bert_of_pablo_team_no_alignment.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding_using_bert_of_pablo_team_no_alignment.csv')
             elif self.side_info_source == 'dna_dnabert':
                 if self.alignment is True:
                     print("INSECT: Aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_insect_dnabert_aligned.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding_insect_dnabert_aligned.csv')
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_insect_dnabert.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding_insect_dnabert.csv')
             elif self.side_info_source == 'dna_dnabert2':
                 if self.alignment is True:
                     print("INSECT: Aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_insect_dnabert2_aligned.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding_insect_dnabert2_aligned.csv')
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_insect_dnabert2.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding_insect_dnabert2.csv')
             elif self.side_info_source == 'dna_pablo_bert_tuned':
                 if self.alignment is True:
                     print("INSECT: Aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_supervised_fine_tuned_pablo_bert_aligned.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding_supervised_fine_tuned_pablo_bert_aligned.csv')
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_supervised_fine_tuned_pablo_bert.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding_supervised_fine_tuned_pablo_bert.csv')
             elif self.side_info_source == 'dna_pablo_bert_mlm_tuned':
                 if self.alignment is True:
                     print("INSECT: Aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_mlm_fine_tuned_pablo_bert_aligned.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding_mlm_fine_tuned_pablo_bert_aligned.csv')
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_mlm_fine_tuned_pablo_bert.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding_mlm_fine_tuned_pablo_bert.csv')
 
             elif self.side_info_source == 'dna_pablo_bert_tuned_5_mer':
                 if self.alignment is True:
                     print("INSECT: Aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40_aligned.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40_aligned.csv')
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40.csv')
 
         # Origin
         # self.side_info = splits_mat['att']
@@ -106,10 +106,10 @@ class data_loader(object):
             else:
                 if self.alignment is True:
                     print("CUB: Aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding.csv')
                 else:
                     print("CUB: Not aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_no_alignment.csv'), delimiter=',')
+                    return os.path.join(self.datapath, self.dataset, 'dna_embedding_no_alignment.csv')
 
 
 
@@ -128,8 +128,7 @@ class data_loader(object):
         self.val_unseen_loc = splits_mat["val_loc"].ravel() - 1
         self.test_seen_loc = splits_mat["test_seen_loc"].ravel() - 1
         self.test_unseen_loc = splits_mat["test_unseen_loc"].ravel() - 1
-        if self.side_info is None:
-            self.side_info = np.genfromtxt(self.embeddings, delimiter=",")
+        self.side_info = np.genfromtxt(self.embeddings, delimiter=",")
 
     def data_split(self):
         if self.tuning:
