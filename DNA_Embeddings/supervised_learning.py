@@ -72,6 +72,7 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
     dict_emb = {}
 
     with torch.no_grad():
+        model.eval()
         pbar = tqdm(enumerate(labels), total=len(labels))
         for i, label in pbar:
             pbar.set_description("Extracting features: ")
@@ -107,7 +108,7 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
         )
     else:
         np.savetxt(
-            os.path.join(args.output_dir, "dna_embedding_supervised_.csv"),
+            os.path.join(args.output_dir, "dna_embedding_supervised.csv"),
             class_embed,
             delimiter=",",
         )
@@ -136,6 +137,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch-size", default=32, type=int, dest="batch_size", help="batch size for supervised training"
     )
+    parser.add_argument(
+        "--model-output", default=None, type=str, dest="model_out", help="path to save model after training"
+    )
 
     args = parser.parse_args()
 
@@ -156,3 +160,6 @@ if __name__ == "__main__":
     train_and_eval(model, train_loader, val_loader, device=device, n_epoch=args.n_epoch)
 
     extract_and_save_class_level_feature(args, model, sequence_pipeline, barcodes, labels)
+
+    if args.model_out:
+        torch.save(model.bert_model.state_dict(), args.model_out)

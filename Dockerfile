@@ -28,8 +28,8 @@ USER $UNAME
 
 # install python packages
 COPY --chown=$UNAME "$REQUIREMENTS_PATH" /tmp/requirements.txt
-RUN python3.11 -m pip install --no-cache-dir --upgrade setuptools distlib pip && \
-    python3.11 -m pip install --no-cache-dir -r /tmp/requirements.txt && \
+RUN python3.10 -m pip install --no-cache-dir --upgrade setuptools distlib pip && \
+    python3.10 -m pip install --no-cache-dir -r /tmp/requirements.txt && \
     rm /tmp/requirements.txt
 
 # copy files
