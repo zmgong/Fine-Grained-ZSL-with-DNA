@@ -22,7 +22,7 @@ class Bert_With_Prediction_Head(nn.Module):
 
     def forward(self, x):
         if self.model_type == "dnabert2":
-            x = self.bert_model(x)[-1]
+            x = self.bert_model(x)[0][0].mean(dim=0)
         else:
             x = self.bert_model(x).hidden_states[-1].mean(dim=1)
 
