@@ -6,7 +6,7 @@ import torch
 import numpy as np
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
-from bert_extract_dna_feature import remove_extra_pre_fix
+# from bert_extract_dna_feature import remove_extra_pre_fix
 
 class Bert_With_Prediction_Head(nn.Module):
     def __init__(self, out_feature, bert_model, dim=768, embedding_dim=768):
@@ -31,10 +31,10 @@ class Bert_With_Prediction_Head(nn.Module):
         x = self.lin2(x)
         return x, feature
 
-    def load_bert_model(self, path_to_ckpt):
-        state_dict = torch.load(path_to_ckpt, map_location=torch.device('cpu'))
-        state_dict = remove_extra_pre_fix(state_dict)
-        self.bert_model.load_state_dict(state_dict)
+#    def load_bert_model(self, path_to_ckpt):
+#        state_dict = torch.load(path_to_ckpt, map_location=torch.device('cpu'))
+#        state_dict = remove_extra_pre_fix(state_dict)
+#        self.bert_model.load_state_dict(state_dict)
 
 def categorical_cross_entropy(outputs, target, num_classes=1213):
     m = nn.Softmax(dim=1)

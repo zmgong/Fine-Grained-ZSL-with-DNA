@@ -404,12 +404,12 @@ class Model(object):
         You may alter the hyperparameters by commenting out the section below. If you want to tune the parameters, just set tuning 
         to True and write a simple for loop to go through the hyperparameters. Matlab version of the code already has tuning option.
         """
-        # k_0 = 1.0
-        # k_1 = 10
-        # m = 500 * self.pca_dim
-        # s = 10
-        # K = 1
-        # att = dataloader.side_info
+        k_0 = 0.1
+        k_1 = 10
+        m = 25 * self.pca_dim
+        s = 10
+        K = 3
+        att = dataloader.side_info
 
         xtrain, ytrain, xtest_seen, ytest_seen, xtest_unseen, ytest_unseen = dataloader.data_split()
         if self.pca_dim:

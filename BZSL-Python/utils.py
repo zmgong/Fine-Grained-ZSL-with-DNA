@@ -65,7 +65,9 @@ class data_loader(object):
                     self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_using_bert_of_pablo_team.csv'), delimiter=',')
                 else:
                     print("INSECT: Not aligned")
-                    self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_using_bert_of_pablo_team_no_alignment.csv'), delimiter=',')
+                    # self.side_info = np.genfromtxt(os.path.join(self.datapath, self.dataset, 'dna_embedding_using_bert_of_pablo_team_no_alignment.csv'), delimiter=',')
+                    # self.side_info = np.genfromtxt("../../data/debugging/dna_embedding_insect_barcodebert.csv", delimiter=",")
+                    self.side_info = np.genfromtxt("../../data/debugging/finetuning/dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40.csv", delimiter=",")
             elif self.side_info_source == 'dna_dnabert':
                 if self.alignment is True:
                     print("INSECT: Aligned")

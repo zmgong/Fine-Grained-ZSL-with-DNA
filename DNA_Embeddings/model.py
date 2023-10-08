@@ -64,7 +64,7 @@ def get_dnabert_tokenizer(tokenizer, pad_token, pad_token_segment_id=0, max_len=
     return tokenize
 
 
-def load_model(args, *, k: int = 6, classification_head: bool = False, num_classes: Optional[int] = None):
+def load_model(args, *, k: int = 5, classification_head: bool = False, num_classes: Optional[int] = None):
     kmer_iter = (["".join(kmer)] for kmer in product("ACGT", repeat=k))
     vocab = build_vocab_from_iterator(kmer_iter, specials=["<MASK>", "<CLS>", "<UNK>"])
     vocab.set_default_index(vocab["<UNK>"])
@@ -81,7 +81,7 @@ def load_model(args, *, k: int = 6, classification_head: bool = False, num_class
         configuration = BertConfig(vocab_size=vocab_size, output_hidden_states=True)
 
         model = BertForMaskedLM(configuration)
-        state_dict = torch.load(args.checkpoint)
+        state_dict = torch.load(args.checkpoint, map_location=torch.device("cpu"))
         state_dict = remove_extra_pre_fix(state_dict)
         model.load_state_dict(state_dict)
 

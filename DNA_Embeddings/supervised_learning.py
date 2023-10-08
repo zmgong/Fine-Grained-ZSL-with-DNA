@@ -100,8 +100,11 @@ def load_model(args, number_of_classes):
     configuration = BertConfig(vocab_size=vocab_size, output_hidden_states=True)
     bert_model = BertForMaskedLM(configuration)
 
+    state_dict = torch.load(args.checkpoint, map_location=torch.device("cpu"))
+    state_dict = remove_extra_pre_fix(state_dict)
+    bert_model.load_state_dict(state_dict)
+
     model = Bert_With_Prediction_Head(out_feature=number_of_classes, bert_model=bert_model)
-    model.load_bert_model(args.checkpoint)
     model.to(device)
 
     print("The model has been succesfully loaded . . .")
