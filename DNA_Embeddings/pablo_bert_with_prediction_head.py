@@ -55,7 +55,7 @@ def remove_extra_pre_fix(state_dict):
     return new_state_dict
 
 
-def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12):
+def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12, num_classes=1213):
     criterion = nn.CrossEntropyLoss()
     # criterion = categorical_cross_entropy()
     # optimizer = optim.Adam(model.parameters(), lr=lr)
@@ -64,7 +64,7 @@ def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12)
     print("start training")
     loss = None
     for epoch in range(n_epoch):  # loop over the dataset multiple times
-        model.train()
+        # model.train()
         running_loss = 0.0
         pbar = tqdm(enumerate(trainloader, 0), total=len(trainloader))
         for i, (inputs, labels) in pbar:
@@ -80,7 +80,7 @@ def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12)
 
             # loss = criterion(outputs, labels)
 
-            loss = categorical_cross_entropy(outputs, labels)
+            loss = categorical_cross_entropy(outputs, labels, num_classes=num_classes)
 
             loss.backward()
 
@@ -89,7 +89,7 @@ def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12)
             running_loss += loss.item()
 
         with torch.no_grad():
-            model.eval()
+            # model.eval()
             train_correct = 0
             train_total = 0
             for data in trainloader:

@@ -85,14 +85,16 @@ def get_dnabert_encoder(tokenizer, max_len: int, k: int = 6):
                 for x in preprocessed
             ]
         else:
-            return tokenizer.encode_plus(preprocessed, max_length=max_len, add_special_tokens=True, pad_to_max_length=True)[
-                "input_ids"
-            ]
+            return tokenizer.encode_plus(
+                preprocessed, max_length=max_len, add_special_tokens=True, pad_to_max_length=True
+            )["input_ids"]
 
     return dnabert_encoder
 
 
-def load_model(args, *, k: int = 6, classification_head: bool = False, num_classes: Optional[int] = None):
+def load_model(
+    args, *, k: int = 6, padding: bool = False, classification_head: bool = False, num_classes: Optional[int] = None
+):
     kmer_iter = (["".join(kmer)] for kmer in product("ACGT", repeat=k))
     vocab = build_vocab_from_iterator(kmer_iter, specials=["<MASK>", "<CLS>", "<UNK>"])
     vocab.set_default_index(vocab["<UNK>"])

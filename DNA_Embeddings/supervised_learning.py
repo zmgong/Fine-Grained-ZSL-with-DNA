@@ -72,14 +72,16 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
     dict_emb = {}
 
     with torch.no_grad():
-        model.eval()
+        # model.eval()
         pbar = tqdm(enumerate(labels), total=len(labels))
         for i, label in pbar:
             pbar.set_description("Extracting features: ")
             _barcode = barcodes[i]
             if args.model == "dnabert2":
                 x = sequence_pipeline(_barcode).to(device)
-                x = model(x)[-1]
+                x = model(x)[0]
+                # x = torch.mean(x[0], dim=0)  # mean pooling
+                x = torch.max(x[0], dim=0)[0]  # max pooling
             else:
                 x = torch.tensor(sequence_pipeline(_barcode), dtype=torch.int64).unsqueeze(0).to(device)
                 _, x = model(x)
@@ -118,10 +120,10 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
 
 def construct_dataloader(X_train, X_val, y_train, y_val, batch_size, tokenizer, pre_tokenize):
     train_dataset = DNADataset(X_train, y_train, tokenizer, pre_tokenize)
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=12)
 
     val_dataset = DNADataset(X_val, y_val, tokenizer, pre_tokenize)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=12)
     return train_dataloader, val_dataloader
 
 
@@ -145,7 +147,9 @@ if __name__ == "__main__":
 
     x_train, y_train, x_val, y_val, barcodes, labels, num_classes = load_data(args)
 
-    model, sequence_pipeline = load_model(args, k=args.k, classification_head=True, num_classes=num_classes)
+    model, sequence_pipeline = load_model(
+        args, k=args.k, padding=True, classification_head=True, num_classes=num_classes
+    )
 
     train_loader, val_loader = construct_dataloader(
         x_train,
@@ -157,7 +161,7 @@ if __name__ == "__main__":
         pre_tokenize=args.model in {"dnabert", "dnabert2"},
     )
 
-    train_and_eval(model, train_loader, val_loader, device=device, n_epoch=args.n_epoch)
+    train_and_eval(model, train_loader, val_loader, device=device, n_epoch=args.n_epoch, num_classes=num_classes)
 
     extract_and_save_class_level_feature(args, model, sequence_pipeline, barcodes, labels)
 
