@@ -78,7 +78,7 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_path", default="../data/INSECT/res101.mat", type=str)
-    parser.add_argument("--model", choices=["bioscanbert", "dnabert", "dnabert2"], default="bioscanbert")
+    parser.add_argument("--model", choices=["bioscanbert", "barcodebert", "dnabert", "dnabert2"], default="barcodebert")
     parser.add_argument("--checkpoint", default=None, type=str)
     parser.add_argument("--output", type=str, default="../data/INSECT/dna_embedding.csv")
     parser.add_argument("--using_aligned_barcode", "--alignment", default=False, action="store_true")

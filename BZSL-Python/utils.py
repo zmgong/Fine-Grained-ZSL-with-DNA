@@ -20,135 +20,84 @@ class data_loader(object):
         self.side_info_source = side_info
         self.tuning = tuning
         self.alignment = alignment
-        self.embeddings = self.get_embeddings_path(embeddings)
+        self.embeddings = embeddings
 
         self.read_matdata()
 
-    def get_embeddings_path(self, embeddings: str):
+    def get_embeddings_path(self, embeddings: str, splits_mat):
         if embeddings:
             return embeddings
 
-        if self.side_info_source not in [
-            "original",
-            "w2v",
-            "dna",
-            "dna_pablo_bert",
-            "dna_dnabert",
-            "dna_dnabert2",
-            "dna_pablo_bert_tuned",
-            "dna_pablo_bert_mlm_tuned",
-            "dna_pablo_bert_tuned_5_mer",
-        ]:
-            print(
-                'Please choose a valid source for side information. There are 3 possibilities for CUB data: ["original", "w2v", "dna", "dna_pablo_bert", "dna_dnabert", "dna_dnabert2", "dna_pablo_bert_tuned", "dna_pablo_bert_mlm_tuned"] and one for INSECT: "dna"'
-            )
-            exit()
-
-        if (self.dataset == "INSECT") and (
-            self.side_info_source
-            not in [
-                "dna",
-                "dna_pablo_bert",
-                "dna_dnabert",
-                "dna_dnabert2",
-                "dna_pablo_bert_tuned",
-                "dna_pablo_bert_mlm_tuned",
-                "dna_pablo_bert_tuned_5_mer",
-            ]
-        ):
-            print(
-                'Invalid side information source for INSECT data! The side information source for INSECT dataset are: ["original", "w2v", "dna", "dna_pablo_bert", "dna_dnabert", "dna_dnabert2", "dna_pablo_bert_tuned", "dna_pablo_bert_mlm_tuned"] . Model will continue using DNA as side information'
-            )
-            exit()
-
-        if self.dataset == "INSECT":
-            if self.side_info_source == "dna":
-                if self.alignment is True:
-                    print("INSECT: Aligned")
-                    return os.path.join(self.datapath, self.dataset, "dna_embedding.csv")
-                else:
-                    print("INSECT: Not aligned")
-                    return os.path.join(self.datapath, self.dataset, "dna_embedding_no_alignment.csv")
-            elif self.side_info_source == "dna_pablo_bert":
-                if self.alignment is True:
-                    print("INSECT: Aligned")
-                    return os.path.join(self.datapath, self.dataset, "dna_embedding_using_bert_of_pablo_team.csv")
-                else:
-                    print("INSECT: Not aligned")
-                    return os.path.join(
-                        self.datapath, self.dataset, "dna_embedding_using_bert_of_pablo_team_no_alignment.csv"
-                    )
-            elif self.side_info_source == "dna_dnabert":
-                if self.alignment is True:
-                    print("INSECT: Aligned")
-                    return os.path.join(self.datapath, self.dataset, "dna_embedding_insect_dnabert_aligned.csv")
-                else:
-                    print("INSECT: Not aligned")
-                    return os.path.join(self.datapath, self.dataset, "dna_embedding_insect_dnabert.csv")
-            elif self.side_info_source == "dna_dnabert2":
-                if self.alignment is True:
-                    print("INSECT: Aligned")
-                    return os.path.join(self.datapath, self.dataset, "dna_embedding_insect_dnabert2_aligned.csv")
-                else:
-                    print("INSECT: Not aligned")
-                    return os.path.join(self.datapath, self.dataset, "dna_embedding_insect_dnabert2.csv")
-            elif self.side_info_source == "dna_pablo_bert_tuned":
-                if self.alignment is True:
-                    print("INSECT: Aligned")
-                    return os.path.join(
-                        self.datapath, self.dataset, "dna_embedding_supervised_fine_tuned_pablo_bert_aligned.csv"
-                    )
-                else:
-                    print("INSECT: Not aligned")
-                    return os.path.join(
-                        self.datapath, self.dataset, "dna_embedding_supervised_fine_tuned_pablo_bert.csv"
-                    )
-            elif self.side_info_source == "dna_pablo_bert_mlm_tuned":
-                if self.alignment is True:
-                    print("INSECT: Aligned")
-                    return os.path.join(
-                        self.datapath, self.dataset, "dna_embedding_mlm_fine_tuned_pablo_bert_aligned.csv"
-                    )
-                else:
-                    print("INSECT: Not aligned")
-                    return os.path.join(self.datapath, self.dataset, "dna_embedding_mlm_fine_tuned_pablo_bert.csv")
-
-            elif self.side_info_source == "dna_pablo_bert_tuned_5_mer":
-                if self.alignment is True:
-                    print("INSECT: Aligned")
-                    return os.path.join(
-                        self.datapath,
-                        self.dataset,
-                        "dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40_aligned.csv",
-                    )
-                else:
-                    print("INSECT: Not aligned")
-                    return os.path.join(
-                        self.datapath, self.dataset, "dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40.csv"
-                    )
-
-        # Origin
-        # self.side_info = splits_mat['att']
-        # if self.dataset=='CUB':
-        #     if self.side_info_source=='w2v':
-        #         self.side_info = splits_mat['att_w2v']
-        #     else:
-        #         self.side_info = splits_mat['att_dna']
-
-        # Modified
-        if self.dataset == "CUB":
-            if self.side_info_source == "w2v":
-                self.side_info = splits_mat["att_w2v"]
+        if self.side_info_source == "dna":
+            if self.alignment is True:
+                print("Aligned")
+                return os.path.join(self.datapath, "dna_embedding.csv")
             else:
-                if self.alignment is True:
-                    print("CUB: Aligned")
-                    return os.path.join(self.datapath, self.dataset, "dna_embedding.csv")
-                else:
-                    print("CUB: Not aligned")
-                    return os.path.join(self.datapath, self.dataset, "dna_embedding_no_alignment.csv")
+                print("Not aligned")
+                return os.path.join(self.datapath, "dna_embedding_no_alignment.csv")
+        elif self.side_info_source == "dna_pablo_bert":
+            if self.alignment is True:
+                print("Aligned")
+                return os.path.join(self.datapath, "dna_embedding_using_bert_of_pablo_team.csv")
+            else:
+                print("Not aligned")
+                return os.path.join(
+                    self.datapath, "dna_embedding_using_bert_of_pablo_team_no_alignment.csv"
+                )
+        elif self.side_info_source == "dna_dnabert":
+            if self.alignment is True:
+                print("Aligned")
+                return os.path.join(self.datapath, "dna_embedding_insect_dnabert_aligned.csv")
+            else:
+                print("Not aligned")
+                return os.path.join(self.datapath, "dna_embedding_insect_dnabert.csv")
+        elif self.side_info_source == "dna_dnabert2":
+            if self.alignment is True:
+                print("Aligned")
+                return os.path.join(self.datapath, "dna_embedding_insect_dnabert2_aligned.csv")
+            else:
+                print("Not aligned")
+                return os.path.join(self.datapath, "dna_embedding_insect_dnabert2.csv")
+        elif self.side_info_source == "dna_pablo_bert_tuned":
+            if self.alignment is True:
+                print("Aligned")
+                return os.path.join(
+                    self.datapath, "dna_embedding_supervised_fine_tuned_pablo_bert_aligned.csv"
+                )
+            else:
+                print("Not aligned")
+                return os.path.join(
+                    self.datapath, "dna_embedding_supervised_fine_tuned_pablo_bert.csv"
+                )
+        elif self.side_info_source == "dna_pablo_bert_mlm_tuned":
+            if self.alignment is True:
+                print("Aligned")
+                return os.path.join(
+                    self.datapath, "dna_embedding_mlm_fine_tuned_pablo_bert_aligned.csv"
+                )
+            else:
+                print("Not aligned")
+                return os.path.join(self.datapath, "dna_embedding_mlm_fine_tuned_pablo_bert.csv")
+
+        elif self.side_info_source == "dna_pablo_bert_tuned_5_mer":
+            if self.alignment is True:
+                print("Aligned")
+                return os.path.join(
+                    self.datapath,
+                    self.dataset,
+                    "dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40_aligned.csv",
+                )
+            else:
+                print("Not aligned")
+                return os.path.join(
+                    self.datapath, "dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40.csv"
+                )
+
+        if self.side_info_source == "w2v":
+            return splits_mat["att_w2v"]
 
     def read_matdata(self):
-        path = os.path.join(self.datapath, self.dataset, "res101.mat")
+        path = os.path.join(self.datapath, "res101.mat")
         data_mat = sio.loadmat(path)
         if "features" in data_mat:
             self.features = data_mat["features"].T
@@ -157,15 +106,15 @@ class data_loader(object):
         print("self.feature: ")
 
         self.labels = data_mat["labels"].ravel() - 1
-        path = os.path.join(self.datapath, self.dataset, "att_splits.mat")
-        splits_mat = sio.loadmat(path)
+        att_splits_path = os.path.join(self.datapath, "att_splits.mat")
+        splits_mat = sio.loadmat(att_splits_path)
 
         self.trainval_loc = splits_mat["trainval_loc"].ravel() - 1
         self.train_loc = splits_mat["train_loc"].ravel() - 1
         self.val_unseen_loc = splits_mat.get("val_loc", splits_mat.get("val_unseen_loc")).ravel() - 1
         self.test_seen_loc = splits_mat["test_seen_loc"].ravel() - 1
         self.test_unseen_loc = splits_mat["test_unseen_loc"].ravel() - 1
-        self.side_info = np.genfromtxt(self.embeddings, delimiter=",")
+        self.side_info = np.genfromtxt(self.get_embeddings_path(self.embeddings, splits_mat), delimiter=",")
 
     def data_split(self):
         if self.tuning:
@@ -208,7 +157,7 @@ class data_loader(object):
             elif self.side_info_source == "dna":
                 hyperparams = [0.1, 25, 25 * dim, 5, 3]
 
-        return self.side_info, hyperparams[0], hyperparams[1], hyperparams[2], hyperparams[3], hyperparams[4]
+        return self.side_info, *hyperparams
 
 
 ### Seen, Unseen class and Harmonic mean claculation ###

@@ -130,7 +130,7 @@ def construct_dataloader(X_train, X_val, y_train, y_val, batch_size, tokenizer, 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_path", default="../data/INSECT/res101.mat", type=str)
-    parser.add_argument("--model", choices=["bioscanbert", "dnabert", "dnabert2"], default="bioscanbert")
+    parser.add_argument("--model", choices=["bioscanbert", "barcodebert", "dnabert", "dnabert2"], default="barcodebert")
     parser.add_argument("--checkpoint", default="bert_checkpoint/5-mer/model_41.pth", type=str)
     parser.add_argument("--output_dir", type=str, default="../data/INSECT/")
     parser.add_argument("--using_aligned_barcode", default=False, action="store_true")

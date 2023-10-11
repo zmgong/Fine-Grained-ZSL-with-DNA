@@ -104,7 +104,7 @@ def load_model(
 
     print("Initializing the model . . .")
 
-    if args.model == "bioscanbert":
+    if args.model in {"bioscanbert", "barcodebert"}:
         tokenizer = KmerTokenizer(k, stride=k)
         sequence_pipeline = lambda x: [0, *vocab(tokenizer(pad(x)))]
 

@@ -336,61 +336,64 @@ class Model(object):
             [mu_0, Sigma_0] = self.calculate_priors(xtrain, ytrain, model_v="unconstrained")
             m_range = [5 * dim, 25 * dim, 100 * dim, 500 * dim]
             print("Tuning is getting started...")
-            for kk in K_range:
-                for k_0 in k0_range:
-                    for k_1 in k1_range:
-                        for m in m_range:
-                            for ss in s_range:
-                                time_s = time.time()
-                                Sig_s, mu_s, v_s, class_id, _ = self.bayesian_cls_train(
-                                    xtrain,
-                                    ytrain,
-                                    dataloader.unseenclasses,
-                                    att,
-                                    k_0=k_0,
-                                    k_1=k_1,
-                                    m=m,
-                                    s=ss,
-                                    K=kk,
-                                    mu_0=mu_0,
-                                    Sigma_0=Sigma_0,
-                                    pca_dim=self.pca_dim,
-                                    tuning=True,
-                                )
+            try:
+                for kk in K_range:
+                    for k_0 in k0_range:
+                        for k_1 in k1_range:
+                            for m in m_range:
+                                for ss in s_range:
+                                    time_s = time.time()
+                                    Sig_s, mu_s, v_s, class_id, _ = self.bayesian_cls_train(
+                                        xtrain,
+                                        ytrain,
+                                        dataloader.unseenclasses,
+                                        att,
+                                        k_0=k_0,
+                                        k_1=k_1,
+                                        m=m,
+                                        s=ss,
+                                        K=kk,
+                                        mu_0=mu_0,
+                                        Sigma_0=Sigma_0,
+                                        pca_dim=self.pca_dim,
+                                        tuning=True,
+                                    )
 
-                                ### Prediction phase ###
-                                ypred_unseen, prob_mat_unseen = self.bayesian_cls_evaluate(
-                                    xtest_unseen, Sig_s, mu_s, v_s, class_id
-                                )
-                                ypred_seen, prob_mat_seen = self.bayesian_cls_evaluate(
-                                    xtest_seen, Sig_s, mu_s, v_s, class_id
-                                )
+                                    ### Prediction phase ###
+                                    ypred_unseen, prob_mat_unseen = self.bayesian_cls_evaluate(
+                                        xtest_unseen, Sig_s, mu_s, v_s, class_id
+                                    )
+                                    ypred_seen, prob_mat_seen = self.bayesian_cls_evaluate(
+                                        xtest_seen, Sig_s, mu_s, v_s, class_id
+                                    )
 
-                                acc_per_cls_s, acc_per_cls_us, gzsl_seen_acc, gzsl_unseen_acc, H = perf_calc_acc(
-                                    ytest_seen, ytest_unseen, ypred_seen, ypred_unseen
-                                )
-                                print(
-                                    "\nCurrent parameters k0=%.2f, k1=%.2f, m=%d, s=%.1f, K=%d on %s dataset:"
-                                    % (k_0, k_1, m, ss, kk, self.dataset)
-                                )
-                                print()
-                                if H > bestH:
-                                    bestH = H
-                                    best_k0 = k_0
-                                    best_k1 = k_1
-                                    best_m = m
-                                    best_s = ss
-                                    best_K = kk
-                                    print(
-                                        "\nResults from k0=%.2f, k1=%.2f, m=%d, s=%.1f, K=%d on %s dataset:"
-                                        % (k_0, k_1, m, ss, kk, self.dataset)
+                                    acc_per_cls_s, acc_per_cls_us, gzsl_seen_acc, gzsl_unseen_acc, H = perf_calc_acc(
+                                        ytest_seen, ytest_unseen, ypred_seen, ypred_unseen
                                     )
                                     print(
-                                        "BSeen acc: %.2f%% Unseen acc: %.2f%%, Harmonic mean: %.2f%%\n"
-                                        % (gzsl_seen_acc * 100, gzsl_unseen_acc * 100, H * 100)
+                                        "\nCurrent parameters k0=%.2f, k1=%.2f, m=%d, s=%.1f, K=%d on dataset:"
+                                        % (k_0, k_1, m, ss, kk)
                                     )
-                                time_e = time.time()
-                                print("total cost: " + str(time_e - time_s))
+                                    print()
+                                    if H > bestH:
+                                        bestH = H
+                                        best_k0 = k_0
+                                        best_k1 = k_1
+                                        best_m = m
+                                        best_s = ss
+                                        best_K = kk
+                                        print(
+                                            "\nResults from k0=%.2f, k1=%.2f, m=%d, s=%.1f, K=%d on dataset:"
+                                            % (k_0, k_1, m, ss, kk)
+                                        )
+                                        print(
+                                            "BSeen acc: %.2f%% Unseen acc: %.2f%%, Harmonic mean: %.2f%%\n"
+                                            % (gzsl_seen_acc * 100, gzsl_unseen_acc * 100, H * 100)
+                                        )
+                                    time_e = time.time()
+                                    print("total cost: " + str(time_e - time_s))
+            except KeyboardInterrupt:
+                print("Grid search interrupted. Returning best results found up to this point.")
         else:
             # TODO: hyper-parameter tuning for constrained model, ignored for now.
             pass
@@ -465,7 +468,7 @@ class Model(object):
             ytest_seen, ytest_unseen, ypred_seen, ypred_unseen
         )
 
-        print("Results from k0=%.2f, k1=%.2f, m=%d, s=%.1f, K=%d on %s dataset:" % (k_0, k_1, m, s, K, self.dataset))
+        print("Results from k0=%.2f, k1=%.2f, m=%d, s=%.1f, K=%d on dataset:" % (k_0, k_1, m, s, K))
         print(
             "BSeen acc: %.2f%% Unseen acc: %.2f%%, Harmonic mean: %.2f%%"
             % (gzsl_seen_acc * 100, gzsl_unseen_acc * 100, H * 100)

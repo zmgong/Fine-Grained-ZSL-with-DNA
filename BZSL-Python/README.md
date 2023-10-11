@@ -4,6 +4,10 @@
 
 This is the Python version of Bayesian classifier - BZSL.
 
+The code included here is an adaptation of the original Python implementation of BZSL. Most of the instructions below
+are preserved from the original code but not necessarily our recommendation for how to use it. Please refer to the root
+folder README.md for more instructions on setup and execution.
+
 ## Prerequisites
 
 The code was implemented in Python 3.7.10 and utilized just 2 packages listed below. The platform I used was Windows 10. 
@@ -20,7 +24,7 @@ To run the code, You may create a conda environment (assuming you already have m
 conda create --name bzsl --file requirements.txt
 ```
 
-If you already have  Python installed, you may just go ahead and manually install numpy nad scipy without creating virtual environment by `pip install numpy=1.19.2`.
+If you already have  Python installed, you may just go ahead and manually install numpy and scipy without creating virtual environment by `pip install numpy=1.19.2`.
 
 ## Data
 
@@ -41,17 +45,18 @@ conda activate bzsl
 ```
 Then navigate to the `BZSL-Python` folder and execute the folowing code:
 ```
-# DNABERT
-python Demo.py --datapath path/to/dataset/folder --dataset INSECT --side_info dna_dnabert --embeddings path/to/embeddings.csv --tuning
+# tune BZSL hyperparameters
+python Demo.py --datapath path/to/dataset/folder --embeddings path/to/embeddings --tuning
+
+# run specific hyperparameters
+python Demo.py --datapath path/to/dataset/folder --embeddings path/to/embeddings --k0 0.1 --k1 10.0 -m 12500 -s 5.0 -K 1
 ```
 
-Note that the path for the dataset folder should contain a folder named by the dataset (i.e. `INSECT` or `CUB`), which contains minimally the res101.mat and att_splits.mat files for the input image features and split metadata, respectively. Additionally, if you do not specify the embeddings path, then a default path will be assumed and searched for in the dataset folder. You can find the default paths in utils.py.
+Note that the path for the dataset folder should contain the res101.mat and att_splits.mat files for the input image 
+features and split metadata, respectively.
 
 Main options for input arguments  are listed below (for the detailed list please check the code):
 ```
 datatset: INSECT, CUB
 side_info: original, w2v, dna
 ```
-
-
- 

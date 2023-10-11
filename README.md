@@ -11,7 +11,37 @@ Fine-grained zero-shot learning task requires some form of side-information totr
   <img width="1000" height="200" src="NIPS_att_diagram.png">
 </p>
 <p align="justify">
-  
+
+## 3dlg-hcvc notes
+
+Modification made to this repository are primarily directed toward adapting the BZSL approach to run in Python and work
+with other models for DNA feature extraction, including BarcodeBERT, DNABERT, and DNABERT-2, to compare against the 
+baseline CNN used in the original paper.
+
+### Setup
+
+This repository was tested with Python 3.11.
+
+To setup your environment, create a virtual environment and run the following:
+```
+pip install -r requirements.txt
+pip uninstall triton  # required because triton has some backwards incompatibility issues with this repo
+```
+
+Datasets (`/project/3dlg-hcvc/bioscan/bzsl/data`):
+* [INSECT dataset](https://indiana-my.sharepoint.com/:f:/g/personal/sbadirli_iu_edu/Ek2KDBxTndlFl_7XblTL-8QBZ6b0C0izgDJIBJQlWtiRKA?e=bCfCMH)
+* [Badirli 2023 dataset](https://dataworks.iupui.edu/handle/11243/41)
+
+Model weights (`/project/3dlg-hcvc/bioscan/bzsl/models`):
+* BarcodeBERT - `/project/3dlg-hcvc/bioscan/bzsl/models/latest_model_5mer.pth` (k=5)
+* [DNABERT](https://drive.google.com/file/d/1BJjqb5Dl2lNMg2warsFQ0-Xvn1xxfFXC/view?usp=sharing) (k=6)
+* DNABERT-2 - model is part of huggingface repository, so no prior checkpoint is needed
+
+### Usage
+
+Please refer to the README.md files in BZSL-Python and DNA_Embeddings for more information on how to run the scripts,
+or use the [run.sh](./run.sh) script to run all of the parts at once.
+
 ## INSECT Images 
 <p float="left">
 <img width="600" src="NIPS_image_samples_final.png">
