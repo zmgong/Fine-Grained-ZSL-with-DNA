@@ -1,10 +1,12 @@
 import argparse
 import os
 import time
+import traceback
 from typing import Optional
 
 import numpy as np
 import scipy.io as sio
+import torch
 from scipy.stats import mode
 
 from bayesian_classifier import apply_pca, BayesianClassifier, calculate_priors
@@ -90,31 +92,38 @@ def tune_hyperparameters(
         for k_1 in k1_range:
             for m in m_range:
                 for s in s_range:
-                    bcls = BayesianClassifier(k_0, k_1, m, s, mu_0=mu_0, scatter=scatter)
-                    seen_acc, unseen_acc, harmonic_mean = bcls.classify(
-                        x_train,
-                        y_train,
-                        x_test_unseen,
-                        y_test_unseen,
-                        x_test_seen,
-                        y_test_seen,
-                        genera,
-                        tuning=True,
-                    )
+                    try:
+                        bcls = BayesianClassifier(k_0, k_1, m, s, mu_0=mu_0, scatter=scatter)
+                        seen_acc, unseen_acc, harmonic_mean = bcls.classify(
+                            x_train,
+                            y_train,
+                            x_test_unseen,
+                            y_test_unseen,
+                            x_test_seen,
+                            y_test_seen,
+                            genera,
+                            tuning=True,
+                        )
 
-                    if harmonic_mean > best_harmonic_mean:
-                        best_harmonic_mean = harmonic_mean
-                        best_k_0 = k_0
-                        best_k_1 = k_1
-                        best_m = m
-                        best_s = s
+                        print(f"Results from {k_0=:.2f}, {k_1=:.2f}, {m=}, {s=:.1f}:")
+                        print(
+                            f"Model {model} results on dataset: {seen_acc=:.2f}, {unseen_acc=:.2f}, {harmonic_mean=:.2f}"
+                        )
 
-                    print(f"Results from {k_0=:.2f}, {k_1=:.2f}, {m=}, {s=:.1f}:")
-                    print(
-                        f"Model {model} results on dataset: {seen_acc=:.2f}, {unseen_acc=:.2f}, {harmonic_mean=:.2f}"
-                    )
+                        if harmonic_mean > best_harmonic_mean:
+                            print(f"  New best result: {harmonic_mean=}")
+                            best_harmonic_mean = harmonic_mean
+                            best_k_0 = k_0
+                            best_k_1 = k_1
+                            best_m = m
+                            best_s = s
+                    except torch.linalg.LinAlgError as e:
+                        traceback.print_exc()
 
-    return best_k_0, best_k_1, best_m, mu_0, best_s
+    print("-----------")
+    print(f"Best parameters: k_0={best_k_0}, k_1={best_k_1}, m={best_m}, s={best_s}")
+
+    return best_k_0, best_k_1, best_m, best_s, pca_dim
 
 
 if __name__ == "__main__":
@@ -162,6 +171,7 @@ if __name__ == "__main__":
     print(f"Loading data from {args.datapath}")
     data, splits = load_data(args.datapath)
     if args.embeddings:
+        print(f"Loading embeddings from {args.embeddings}")
         embeddings_dna = np.genfromtxt(args.embeddings, delimiter=",")
     else:  # use default embeddings from paper
         embeddings_dna = data["embeddings_dna"]
@@ -188,10 +198,6 @@ if __name__ == "__main__":
         # ridge regression
         ridge_mapping = ridge_regression(embeddings_dna, embeddings_img, args.rho)
 
-    k_0, k_1, m, s, pca_dim = load_tuned_params(
-        model, k_0=args.k_0, k_1=args.k_1, m=args.m, s=args.s, pca_dim=args.pca
-    )
-
     if args.tuning:
         print("Starting hyperparameter tuning for k_0, k_1, m, and s...")
         x_train, y_train, x_test_unseen, y_test_unseen, x_test_seen, y_test_seen, x_train_img = get_data_splits(
@@ -202,8 +208,12 @@ if __name__ == "__main__":
             x_train = np.concatenate((x_train, x_tr_g.T), axis=0)
             y_train = np.concatenate((y_train, y_train), axis=0)
 
-        k_0, k_1, m, mu_0, s = tune_hyperparameters(
-            x_train, y_train, x_test_unseen, y_test_unseen, x_test_seen, y_test_seen, genera, 500
+        k_0, k_1, m, s, pca_dim = tune_hyperparameters(
+            x_train, y_train, x_test_unseen, y_test_unseen, x_test_seen, y_test_seen, genera, args.pca
+        )
+    else:
+        k_0, k_1, m, s, pca_dim = load_tuned_params(
+            model, k_0=args.k_0, k_1=args.k_1, m=args.m, s=args.s, pca_dim=args.pca
         )
 
     print("Running inference for selected hyperparameters...")

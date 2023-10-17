@@ -42,12 +42,15 @@ def load_data(args):
     return barcodes, labels
 
 
-def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcodes, labels):
+def extract_and_save_class_level_feature(
+    args, model, sequence_pipeline, barcodes, labels, extract_class_embeddings=True
+):
     all_label = np.unique(labels)
     all_label.sort()
     dict_emb = {}
 
     with torch.no_grad():
+        all_embeddings = []
         pbar = tqdm(enumerate(labels), total=len(labels))
         for i, label in pbar:
             pbar.set_description("Extracting features: ")
@@ -63,22 +66,32 @@ def extract_and_save_class_level_feature(args, model, sequence_pipeline, barcode
                 x = x.mean(1)  # Global Average Pooling excluding CLS token
             x = x.cpu().numpy()
 
-            if str(label) not in dict_emb.keys():
-                dict_emb[str(label)] = []
-            dict_emb[str(label)].append(x)
-    class_embed = []
-    for i in all_label:
-        class_embed.append(np.sum(dict_emb[str(i)], axis=0) / len(dict_emb[str(i)]))
-    class_embed = np.array(class_embed, dtype=object)
-    class_embed = class_embed.T.squeeze()
-    np.savetxt(args.output, class_embed, delimiter=",")
+            if extract_class_embeddings:
+                if str(label) not in dict_emb.keys():
+                    dict_emb[str(label)] = []
+                dict_emb[str(label)].append(x)
+            else:
+                all_embeddings.append(x)
+    if extract_class_embeddings:
+        class_embed = []
+        for i in all_label:
+            class_embed.append(np.sum(dict_emb[str(i)], axis=0) / len(dict_emb[str(i)]))
+        class_embed = np.array(class_embed, dtype=object)
+        class_embed = class_embed.T.squeeze()
+        np.savetxt(args.output, class_embed, delimiter=",")
+    else:
+        all_embeddings = np.array(all_embeddings).squeeze()
+
+        np.savetxt(args.output, all_embeddings, delimiter=",")
     print("DNA embeddings is saved.")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_path", default="../data/INSECT/res101.mat", type=str)
-    parser.add_argument("--model", choices=["bioscanbert", "barcodebert", "dnabert", "dnabert2"], default="barcodebert")
+    parser.add_argument(
+        "--model", choices=["bioscanbert", "barcodebert", "dnabert", "dnabert2"], default="barcodebert"
+    )
     parser.add_argument("--checkpoint", default=None, type=str)
     parser.add_argument("--output", type=str, default="../data/INSECT/dna_embedding.csv")
     parser.add_argument("--using_aligned_barcode", "--alignment", default=False, action="store_true")
@@ -89,6 +102,13 @@ if __name__ == "__main__":
         dest="use_pablo_tokenizer",
         help="if specified, uses Pablo's non-overlapping k-mer tokenizer instead of the default tokenizer",
     )
+    parser.add_argument(
+        "-s",
+        "--save-all",
+        action="store_true",
+        dest="extract_all_embeddings",
+        help="if specified, save all embeddings rather than average class embedding",
+    )
     args = parser.parse_args()
 
     model, sequence_pipeline = load_model(args, k=args.k)
@@ -96,4 +116,6 @@ if __name__ == "__main__":
 
     barcodes, labels = load_data(args)
 
-    extract_and_save_class_level_feature(args, model, sequence_pipeline, barcodes, labels)
+    extract_and_save_class_level_feature(
+        args, model, sequence_pipeline, barcodes, labels, extract_class_embeddings=not args.extract_all_embeddings
+    )
