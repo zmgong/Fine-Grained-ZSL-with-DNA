@@ -167,6 +167,9 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    if args.model in {"OSBC_DIL", "OSBC_DIC"}:
+        raise ValueError(f"model type not supported: {args.model}")
+
     # parse data
     print(f"Loading data from {args.datapath}")
     data, splits = load_data(args.datapath)

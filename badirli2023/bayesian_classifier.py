@@ -2,15 +2,18 @@ from typing import Optional
 
 import numpy as np
 import torch
+from sklearn.decomposition import PCA
 from scipy.linalg import cholesky, solve_triangular
 from scipy.stats import mode
 from scipy.special import gammaln
 
 
 def apply_pca(pca_dim, *x_data):
-    covariance = np.cov(x_data[0], rowvar=False)
-    _, eigenvectors = np.linalg.eig(covariance)
-    return (np.matmul(x, eigenvectors[:, -pca_dim:]) for x in x_data)
+    # This method seems to most consistently reproduce similar results to matlab, rather than implementing PCA from
+    # scratch, due to some subtleties as to how matlab computes eigenvectors/eigenvalues compared to numpy
+    pca = PCA(n_components=pca_dim)
+    pca.fit(x_data[0])
+    return [pca.transform(x) for x in x_data]
 
 
 def calculate_priors(data, labels):
@@ -64,9 +67,9 @@ class BayesianClassifier:
         num_iter=1,
     ):
         embedding_dim = x_train.shape[1]
-
         if pca is not None:
             x_train, x_test_seen, x_test_unseen = apply_pca(pca, x_train, x_test_seen, x_test_unseen)
+            embedding_dim = pca
 
         # the original implementation had an option to permute the embedding features into a different order when not
         # tuning, but it was disabled for some reason in a mysterious way (almost looks like a bug)
@@ -254,7 +257,6 @@ class BayesianClassifier:
         sig_s = torch.tensor(sig_s, device=device)
         for j in range(num_classes):
             v = x_test - mu_s[j, :]  # center the data
-            # chsig = cholesky(sig_s[:, :, j], lower=False)
             chsig = torch.linalg.cholesky(sig_s[:, :, j]).mH
             tpar = (
                 gl_pc[v_s[j] + embedding_dim]
