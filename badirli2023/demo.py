@@ -64,8 +64,22 @@ def load_tuned_params(
 
 
 def tune_hyperparameters(
-    x_train, y_train, x_test_unseen, y_test_unseen, x_test_seen, y_test_seen, genera, pca_dim: Optional[int] = None
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_test_unseen: np.ndarray,
+    y_test_unseen: np.ndarray,
+    x_test_seen: np.ndarray,
+    y_test_seen: np.ndarray,
+    genera: np.ndarray,
+    model: str,
+    pca_dim: Optional[int] = None,
 ):
+    if model == "OSBC_DIC":
+        # in order to add support, we would either need to tune parameters separately for each model or tune the same
+        # set of parameters for both models. The former could be achieved by tuning OSBC_DNA and OSBC_IMG, but the 
+        # latter would double the tuning time and so would be computationally burdensome.
+        raise NotImplementedError("Hyperparameter tuning is not yet supported for DIC.")
+
     if pca_dim is None:
         pca_dim = x_train.shape[1]
 
@@ -129,11 +143,10 @@ def tune_hyperparameters(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--datapath", type=str, help="path to folder containing data and splits files")
-    parser.add_argument("--transductive", action="store_true", help="if true, use transductive approach")
     parser.add_argument(
         "--model",
         default="OSBC_DNA",
-        choices=["OSBC_DNA", "OSBC_IMG", "OSBC_DIL", "OSBC_DIT"],
+        choices=["OSBC_DNA", "OSBC_IMG", "OSBC_DIC", "OSBC_DIL", "OSBC_DIT"],
         help="name of model to use for combining ",
     )
     parser.add_argument("--tuning", default=False, action="store_true")
@@ -167,9 +180,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if args.model in {"OSBC_DIL", "OSBC_DIC"}:
-        raise ValueError(f"model type not supported: {args.model}")
-
     # parse data
     print(f"Loading data from {args.datapath}")
     data, splits = load_data(args.datapath)
@@ -183,14 +193,8 @@ if __name__ == "__main__":
     labels = data["labels"]
     model = args.model
 
-    if args.transductive:
+    if model == "OSBC_DIT":  # transductive
         print("Learning map for ridge regression...")
-        if model == "OSBC_IMG":
-            print(
-                "The transductive method works well if the mapping is from Image to DNA, thus we automatically run "
-                "this version!"
-            )
-        model = "OSBC_DIT"
 
         st = [splits["trainval_loc"], splits["test_unseen_loc"], splits["test_seen_loc"]]
 
@@ -206,13 +210,13 @@ if __name__ == "__main__":
         x_train, y_train, x_test_unseen, y_test_unseen, x_test_seen, y_test_seen, x_train_img = get_data_splits(
             embeddings_dna, embeddings_img, labels, splits, args.tuning, model
         )
-        if args.transductive:
+        if model == "OSBC_DIT":  # transductive
             x_tr_g = np.matmul(ridge_mapping, x_train_img.T)
             x_train = np.concatenate((x_train, x_tr_g.T), axis=0)
             y_train = np.concatenate((y_train, y_train), axis=0)
 
         k_0, k_1, m, s, pca_dim = tune_hyperparameters(
-            x_train, y_train, x_test_unseen, y_test_unseen, x_test_seen, y_test_seen, genera, args.pca
+            x_train, y_train, x_test_unseen, y_test_unseen, x_test_seen, y_test_seen, genera, model, args.pca
         )
     else:
         k_0, k_1, m, s, pca_dim = load_tuned_params(
@@ -225,13 +229,13 @@ if __name__ == "__main__":
     )
 
     # data augmentation from transductive method
-    if args.transductive:
+    if model == "OSBC_DIT":  # transductive
         x_tr_g = np.matmul(ridge_mapping, x_train_img.T)
         x_train = np.concatenate((x_train, x_tr_g.T), axis=0)
         y_train = np.concatenate((y_train, y_train), axis=0)
 
     # model training and inference
-    bcls = BayesianClassifier(k_0, k_1, m, s)
+    bcls = BayesianClassifier(model, k_0, k_1, m, s)
     start_time = time.time()
     seen_acc, unseen_acc, harmonic_mean = bcls.classify(
         x_train, y_train, x_test_unseen, y_test_unseen, x_test_seen, y_test_seen, genera, pca=pca_dim

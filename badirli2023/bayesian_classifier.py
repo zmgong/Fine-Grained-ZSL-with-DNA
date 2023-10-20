@@ -35,9 +35,17 @@ def calculate_priors(data, labels):
     return mu_0, scatter
 
 
+def normalize_range(arr, axis=None):
+    max_value = np.max(arr, axis=axis, keepdims=True)
+    min_value = np.max(arr, axis=axis, keepdims=True)
+
+    return (arr - min_value) / max_value
+
+
 class BayesianClassifier:
     def __init__(
         self,
+        model: str,
         k_0: float,
         k_1: float,
         m: int,
@@ -45,12 +53,90 @@ class BayesianClassifier:
         mu_0: Optional[float] = None,
         scatter: Optional[np.ndarray] = None,
     ) -> None:
+        self.model = model
         self.k_0 = k_0
         self.k_1 = k_1
         self.m = m
         self.s = s
         self.mu_0 = mu_0
         self.scatter = scatter
+
+    def __call__(
+        self,
+        x_train,
+        y_train,
+        x_test_unseen,
+        y_test_unseen,
+        x_test_seen,
+        y_test_seen,
+        genera,
+        *,
+        dna_embedding_size: Optional[int] = None,
+        pca: Optional[int] = None,
+        tuning: bool = False,
+        num_iter: int = 1,
+    ):
+        if self.model == "OSBC_DIL":
+            assert dna_embedding_size is not None
+            dna_data = {
+                "x_train": x_train[:, :dna_embedding_size],
+                "y_train": y_train[:dna_embedding_size],
+                "x_test_unseen": x_test_unseen[:, :dna_embedding_size],
+                "y_test_unseen": y_test_unseen[:dna_embedding_size],
+                "x_test_seen": x_test_seen[:, :dna_embedding_size],
+                "y_test_seen": y_test_seen[:dna_embedding_size],
+            }
+            image_data = {
+                "x_train": x_train[:, :dna_embedding_size],
+                "y_train": y_train[:dna_embedding_size],
+                "x_test_unseen": x_test_unseen[:, :dna_embedding_size],
+                "y_test_unseen": y_test_unseen[:dna_embedding_size],
+                "x_test_seen": x_test_seen[:, :dna_embedding_size],
+                "y_test_seen": y_test_seen[:dna_embedding_size],
+            }
+
+            prob_seen_dna, prob_unseen_dna, class_id = self.classify(
+                **dna_data, genera=genera, pca=pca, tuning=tuning, num_iter=num_iter, get_metrics=False
+            )
+            prob_seen_image, prob_unseen_image, class_id = self.classify(
+                **image_data, genera=genera, pca=pca, tuning=tuning, num_iter=num_iter, get_metrics=False
+            )
+
+            # normalized summation of likelihoods
+            prob_unseen_dna = normalize_range(prob_unseen_dna, axis=1)
+            prob_seen_dna = normalize_range(prob_seen_dna, axis=1)
+            prob_unseen_image = normalize_range(prob_unseen_image, axis=1)
+            prob_seen_image = normalize_range(prob_seen_image, axis=1)
+
+            prob_unseen = prob_unseen_dna + prob_unseen_image
+            prob_seen = prob_seen_dna + prob_seen_image
+            unseen_indices = np.argsort(prob_unseen, axis=1)[::-1]
+            seen_indices = np.argsort(prob_seen, axis=1)[::-1]
+            y_pred_unseen = class_id[unseen_indices]
+            y_pred_seen = class_id[seen_indices]
+
+            _, unseen_acc = self.evaluate(y_test_unseen, y_pred_unseen, genera, is_unseen=True)
+
+            _, seen_acc = self.evaluate(y_test_seen, y_pred_seen, genera, is_unseen=False)
+
+            harmonic_mean = 2 * unseen_acc * seen_acc / (unseen_acc + seen_acc) if unseen_acc + seen_acc > 0 else 0
+
+            return seen_acc, unseen_acc, harmonic_mean
+
+        else:
+            return self.classify(
+                x_train,
+                y_train,
+                x_test_unseen,
+                y_test_unseen,
+                x_test_seen,
+                y_test_seen,
+                genera,
+                pca=pca,
+                tuning=tuning,
+                num_iter=num_iter,
+                get_metrics=True,
+            )
 
     def classify(
         self,
@@ -65,6 +151,7 @@ class BayesianClassifier:
         pca=None,
         tuning=False,
         num_iter=1,
+        get_metrics: bool = True,
     ):
         embedding_dim = x_train.shape[1]
         if pca is not None:
@@ -78,6 +165,7 @@ class BayesianClassifier:
         y_pred_unseen = np.zeros((x_test_unseen.shape[0], num_iter))
         y_pred_seen = np.zeros((x_test_seen.shape[0], num_iter))
 
+        assert num_iter >= 1
         for iter in range(num_iter):
             x_train_iter = x_train[:, embedding_order[iter]]
             y_train_iter = y_train
@@ -94,19 +182,22 @@ class BayesianClassifier:
             sig_s, mu_s, v_s, class_id, sigmas = self.ppd_derivation(x_train_iter, y_train_iter, genera, psi)
 
             # inference
-            y_pred_unseen[:, iter], _ = self.predict(x_test_unseen_iter, sig_s, mu_s, v_s, class_id)
-            y_pred_seen[:, iter], _ = self.predict(x_test_seen_iter, sig_s, mu_s, v_s, class_id)
+            y_pred_unseen[:, iter], prob_unseen = self.predict(x_test_unseen_iter, sig_s, mu_s, v_s, class_id)
+            y_pred_seen[:, iter], prob_seen = self.predict(x_test_seen_iter, sig_s, mu_s, v_s, class_id)
 
         # performance calculation
-        y_pred_unseen_final = mode(y_pred_unseen, axis=1).mode
-        _, unseen_acc = self.evaluate(y_test_unseen, y_pred_unseen_final, genera, is_unseen=True)
+        if get_metrics:
+            y_pred_unseen_final = mode(y_pred_unseen, axis=1).mode
+            _, unseen_acc = self.evaluate(y_test_unseen, y_pred_unseen_final, genera, is_unseen=True)
 
-        y_pred_seen_final = mode(y_pred_seen, axis=1).mode
-        _, seen_acc = self.evaluate(y_test_seen, y_pred_seen_final, genera, is_unseen=False)
+            y_pred_seen_final = mode(y_pred_seen, axis=1).mode
+            _, seen_acc = self.evaluate(y_test_seen, y_pred_seen_final, genera, is_unseen=False)
 
-        harmonic_mean = 2 * unseen_acc * seen_acc / (unseen_acc + seen_acc) if unseen_acc + seen_acc > 0 else 0
+            harmonic_mean = 2 * unseen_acc * seen_acc / (unseen_acc + seen_acc) if unseen_acc + seen_acc > 0 else 0
 
-        return seen_acc, unseen_acc, harmonic_mean
+            return seen_acc, unseen_acc, harmonic_mean
+        else:
+            return prob_seen, prob_unseen, class_id
 
     def ppd_derivation(self, x_train: np.ndarray, y_train: np.ndarray, genera: np.ndarray, psi: np.ndarray):
         """

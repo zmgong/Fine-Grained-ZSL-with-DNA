@@ -17,6 +17,8 @@ def load_data(
 def get_data_splits(embeddings_dna, embeddings_img, labels, splits, is_tuning, model):
     if model == "OSBC_IMG":
         features = embeddings_img
+    elif model in {"OSBC_DIC", "OSBC_DIL"}:
+        features = np.concatenate((embeddings_dna, embeddings_img), axis=1)
     else:
         features = embeddings_dna
 
