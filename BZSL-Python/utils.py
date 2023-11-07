@@ -11,7 +11,9 @@ from sklearn.model_selection import train_test_split
 
 
 class data_loader(object):
-    def __init__(self, datapath, dataset, side_info="original", tuning=False, alignment=True, embeddings=None):
+    def __init__(
+        self, datapath, dataset, side_info="original", tuning=False, alignment=True, embeddings=None, use_genus=False
+    ):
         print("The current working directory is")
         print(os.getcwd())
 
@@ -21,6 +23,8 @@ class data_loader(object):
         self.tuning = tuning
         self.alignment = alignment
         self.embeddings = embeddings
+        self.use_genus = use_genus
+        self.label_to_genus = None
 
         self.read_matdata()
 
@@ -41,9 +45,7 @@ class data_loader(object):
                 return os.path.join(self.datapath, "dna_embedding_using_bert_of_pablo_team.csv")
             else:
                 print("Not aligned")
-                return os.path.join(
-                    self.datapath, "dna_embedding_using_bert_of_pablo_team_no_alignment.csv"
-                )
+                return os.path.join(self.datapath, "dna_embedding_using_bert_of_pablo_team_no_alignment.csv")
         elif self.side_info_source == "dna_dnabert":
             if self.alignment is True:
                 print("Aligned")
@@ -61,20 +63,14 @@ class data_loader(object):
         elif self.side_info_source == "dna_pablo_bert_tuned":
             if self.alignment is True:
                 print("Aligned")
-                return os.path.join(
-                    self.datapath, "dna_embedding_supervised_fine_tuned_pablo_bert_aligned.csv"
-                )
+                return os.path.join(self.datapath, "dna_embedding_supervised_fine_tuned_pablo_bert_aligned.csv")
             else:
                 print("Not aligned")
-                return os.path.join(
-                    self.datapath, "dna_embedding_supervised_fine_tuned_pablo_bert.csv"
-                )
+                return os.path.join(self.datapath, "dna_embedding_supervised_fine_tuned_pablo_bert.csv")
         elif self.side_info_source == "dna_pablo_bert_mlm_tuned":
             if self.alignment is True:
                 print("Aligned")
-                return os.path.join(
-                    self.datapath, "dna_embedding_mlm_fine_tuned_pablo_bert_aligned.csv"
-                )
+                return os.path.join(self.datapath, "dna_embedding_mlm_fine_tuned_pablo_bert_aligned.csv")
             else:
                 print("Not aligned")
                 return os.path.join(self.datapath, "dna_embedding_mlm_fine_tuned_pablo_bert.csv")
@@ -89,9 +85,7 @@ class data_loader(object):
                 )
             else:
                 print("Not aligned")
-                return os.path.join(
-                    self.datapath, "dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40.csv"
-                )
+                return os.path.join(self.datapath, "dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40.csv")
 
         if self.side_info_source == "w2v":
             return splits_mat["att_w2v"]
@@ -105,7 +99,10 @@ class data_loader(object):
             self.features = data_mat["embeddings_img"]
         print("self.feature: ")
 
+        # get labels
         self.labels = data_mat["labels"].ravel() - 1
+        self.num_species = np.max(self.labels) + 1
+
         att_splits_path = os.path.join(self.datapath, "att_splits.mat")
         splits_mat = sio.loadmat(att_splits_path)
 
@@ -115,6 +112,27 @@ class data_loader(object):
         self.test_seen_loc = splits_mat["test_seen_loc"].ravel() - 1
         self.test_unseen_loc = splits_mat["test_unseen_loc"].ravel() - 1
         self.side_info = np.genfromtxt(self.get_embeddings_path(self.embeddings, splits_mat), delimiter=",")
+
+        if self.use_genus:  # generate mapping of species classes to genera
+            # find genus labels per sample
+            # genus labels will start at max_label + 1 (e.g. for 1213 species classes, genus labels start at 1213)
+            genera = [species[0][0].split()[0] for species in data_mat["species"]]
+            unique_genera = np.unique(genera)
+            genus_to_idx = dict(zip(unique_genera, self.num_species + np.arange(len(genera))))
+            self.genus_labels = np.array(list(map(lambda g: genus_to_idx[g], genera)))
+
+            # build mapping of species label to genus label
+            self.label_to_genus = {}
+            for label, genus in zip(self.labels, self.genus_labels):
+                if label not in self.label_to_genus:
+                    self.label_to_genus[label] = genus
+                else:
+                    assert (
+                        self.label_to_genus[label] == genus
+                    ), f"Found label which has multiple genera: {label=}, genera=[{self.label_to_genus[label]}, {genus}]"
+
+        else:
+            self.label_to_genus = {idx: idx for idx in range(self.num_species)}
 
     def data_split(self):
         if self.tuning:
@@ -134,6 +152,10 @@ class data_loader(object):
 
         self.seenclasses = np.unique(ytrain)
         self.unseenclasses = np.unique(ytest_unseen)
+        # revise labels to use mix of genus and species
+        if self.use_genus:
+            assert self.label_to_genus is not None
+            ytest_unseen = np.array([self.label_to_genus[x] for x in ytest_unseen])
 
         return xtrain, ytrain, xtest_seen, ytest_seen, xtest_unseen, ytest_unseen
 
@@ -161,7 +183,11 @@ class data_loader(object):
 
 
 ### Seen, Unseen class and Harmonic mean claculation ###
-def perf_calc_acc(y_ts_s, y_ts_us, ypred_s, ypred_us):
+def perf_calc_acc(y_ts_s, y_ts_us, ypred_s, ypred_us, label_to_genus=None):
+    if label_to_genus:
+        # we only need to do this for unseen, since seen classes will always be at species level
+        ypred_us = np.array([[label_to_genus[int(x[0])]] for x in ypred_us])
+
     seen_cls = np.unique(y_ts_s)
     unseen_cls = np.unique(y_ts_us)
     # Performance calculation

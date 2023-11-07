@@ -14,15 +14,18 @@ from CNN import Model, train_and_eval
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def load_data():
-    datapath = r'../data'
-    dataset = 'INSECT'
-    x = sio.loadmat(os.path.join(datapath, dataset, 'res101.mat'))
-    x2 = sio.loadmat(os.path.join(datapath, dataset, 'att_splits.mat'))
-    barcodes = x['nucleotides_aligned'].T
-
-    species = x['labels']
-    train_loc = x2['trainval_loc']
+def load_data(aligned=True):
+    datapath = r"../../data"
+    dataset = "INSECT"
+    x = sio.loadmat(os.path.join(datapath, dataset, "res101.mat"))
+    x2 = sio.loadmat(os.path.join(datapath, dataset, "att_splits.mat"))
+    if aligned:
+        barcodes = x["nucleotides_aligned"].T
+    else:
+        barcodes = x["nucleotides"]
+    breakpoint()
+    species = x["labels"]
+    train_loc = x2["trainval_loc"]
 
     # Number of training samples and entire data
     N = len(barcodes)
@@ -61,9 +64,9 @@ def load_data():
     allX = np.zeros((N, sl, 5))
     for i in range(N):
         for j in range(sl):
-            if (len(sequence_of_int[i]) > j):
+            if len(sequence_of_int[i]) > j:
                 k = sequence_of_int[i][j] - 1
-                if (k > 4):
+                if k > 4:
                     k = 4
                 allX[i][j][k] = 1.0
 
@@ -78,8 +81,9 @@ def load_data():
         k = labels[i] - 1
         class_cnt[k] += 1
         itl = i + 1
-        if seq_cnt[k] >= 10 and class_cnt[k] <= 50 and itl in train_loc[
-            0]:  # Note that samples from training set are only used
+        if (
+            seq_cnt[k] >= 10 and class_cnt[k] <= 50 and itl in train_loc[0]
+        ):  # Note that samples from training set are only used
             Nc = Nc + 1
             for j in range(sl):
                 if len(sequence_of_int[i]) > j:
@@ -98,7 +102,7 @@ def load_data():
     labelY = labelY[0:Nc]
 
     # To make sure the training data does not include any unseen class nucleotides
-    label_us = species[x2['test_unseen_loc'][0] - 1]
+    label_us = species[x2["test_unseen_loc"][0] - 1]
     np.intersect1d(np.unique(labelY), np.unique(label_us) - 1)
 
     # Cleaning empty classes
@@ -124,28 +128,36 @@ def get_embedding(model, all_X):
                 embedding = feature
             else:
                 embedding = torch.cat((embedding, feature), 0)
-    embedding = embedding.to('cpu')
+    embedding = embedding.to("cpu")
     return embedding
 
 
-if __name__ == '__main__':
-    X_train, X_test, y_train, y_test, all_X, species, total_number_of_classes = load_data()
+if __name__ == "__main__":
+    # NOTE: it didn't feel worth implementing a proper argparse for this since we barely run this script,
+    # but if we do use it in the future, it would be worth adding
+    aligned = True
+    extract_class_embeddings = True
+
+    X_train, X_test, y_train, y_test, all_X, species, total_number_of_classes = load_data(aligned=aligned)
     trainloader, testloader = construct_dataloader(X_train, X_test, y_train, y_test, 32)
     model = Model(1, total_number_of_classes).to(device)
     train_and_eval(model, trainloader, testloader, device=device)
     dna_embeddings = get_embedding(model, all_X)
     dict_emb = {}
-    for index, label in enumerate(species):
 
-        if str(label[0]) not in dict_emb.keys():
-            dict_emb[str(label[0])] = []
-        dict_emb[str(label[0])].append(np.array(dna_embeddings[index]))
-    all_label = np.unique(species)
-    class_embed = []
-    for i in all_label:
-        class_embed.append(np.sum(dict_emb[str(i)], axis=0) / len(dict_emb[str(i)]))
-    class_embed = np.array(class_embed, dtype=object)
-    class_embed = class_embed.T
+    if extract_class_embeddings:
+        for index, label in enumerate(species):
+            if str(label[0]) not in dict_emb.keys():
+                dict_emb[str(label[0])] = []
+            dict_emb[str(label[0])].append(np.array(dna_embeddings[index]))
+        all_label = np.unique(species)
+        class_embed = []
+        for i in all_label:
+            class_embed.append(np.sum(dict_emb[str(i)], axis=0) / len(dict_emb[str(i)]))
+        class_embed = np.array(class_embed, dtype=object)
+        final_embeddings = class_embed.T
+    else:
+        final_embeddings = dna_embeddings
 
-    np.savetxt("../data/INSECT/dna_embedding.csv", class_embed, delimiter=",")
-    print('DNA embeddings is saved.')
+    np.savetxt("../../data/INSECT/dna_embeddings.csv", final_embeddings, delimiter=",")
+    print("DNA embeddings is saved.")

@@ -33,9 +33,8 @@ parser.add_argument(
 )
 parser.add_argument("-s", dest="s", default=None, type=float, help="scalar for mean of class covariances")
 parser.add_argument("-K", dest="K", default=None, type=int, help="number of most similar seen classes to find in BZSL")
-parser.add_argument(
-    "--output", default=None, type=str, dest="output", help="path to save final results after tuning"
-)
+parser.add_argument("--genus", action="store_true", help="if True, use genus labels for unseen species")
+parser.add_argument("--output", default=None, type=str, dest="output", help="path to save final results after tuning")
 
 
 """

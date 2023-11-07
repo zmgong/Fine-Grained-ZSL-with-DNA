@@ -20,12 +20,15 @@ class Model(object):
         self.alignment = opt.alignment
         self.embeddings = opt.embeddings
         self.output = opt.output
+        self.use_genus = opt.genus
 
         if opt.m and opt.m % self.pca_dim != 0:
-            raise ValueError(f"m should be a multiple of the PCA dimension ({self.pca_dim}), but got {self.m} instead.")
+            raise ValueError(
+                f"m should be a multiple of the PCA dimension ({self.pca_dim}), but got {self.m} instead."
+            )
 
         self.k_0 = opt.k_0
-        self.k_1 = opt.k_1 
+        self.k_1 = opt.k_1
         self.m = opt.m
         self.s = opt.s
         self.K = opt.K
@@ -295,7 +298,7 @@ class Model(object):
         # Default # features for PCA id Unconstrained model selected
 
         dataloader = data_loader(
-            self.datapath, self.dataset, self.side_info, self.tuning, self.alignment, self.embeddings
+            self.datapath, self.dataset, self.side_info, self.tuning, self.alignment, self.embeddings, self.use_genus
         )
 
         # load attribute
@@ -368,7 +371,7 @@ class Model(object):
                                     )
 
                                     acc_per_cls_s, acc_per_cls_us, gzsl_seen_acc, gzsl_unseen_acc, H = perf_calc_acc(
-                                        ytest_seen, ytest_unseen, ypred_seen, ypred_unseen
+                                        ytest_seen, ytest_unseen, ypred_seen, ypred_unseen, dataloader.label_to_genus
                                     )
                                     print(
                                         "\nCurrent parameters k0=%.2f, k1=%.2f, m=%d, s=%.1f, K=%d on dataset:"
@@ -414,6 +417,7 @@ class Model(object):
                 False,
                 alignment=self.alignment,
                 embeddings=self.embeddings,
+                use_genus=self.use_genus,
             )
         else:
             dataloader = data_loader(
@@ -423,6 +427,7 @@ class Model(object):
                 False,
                 alignment=self.alignment,
                 embeddings=self.embeddings,
+                use_genus=self.use_genus,
             )
             att, k_0, k_1, m, s, K = dataloader.load_tuned_params()
             if self.k_0 is not None:
@@ -465,7 +470,7 @@ class Model(object):
         ypred_seen, prob_mat_seen = self.bayesian_cls_evaluate(xtest_seen, Sig_s, mu_s, v_s, class_id)
 
         acc_per_cls_s, acc_per_cls_us, gzsl_seen_acc, gzsl_unseen_acc, H = perf_calc_acc(
-            ytest_seen, ytest_unseen, ypred_seen, ypred_unseen
+            ytest_seen, ytest_unseen, ypred_seen, ypred_unseen, dataloader.label_to_genus
         )
 
         print("Results from k0=%.2f, k1=%.2f, m=%d, s=%.1f, K=%d on dataset:" % (k_0, k_1, m, s, K))
@@ -478,9 +483,9 @@ class Model(object):
             with open(self.output, "w") as f:
                 json.dump(
                     {
-                        "parameters": {"k0": k_0, "k1": k_1, "m": m, "s": s, "K": K}, 
-                        "results": {"seen_acc": gzsl_seen_acc, "unseen_acc": gzsl_unseen_acc, "harmonic_mean": H}
-                    }, 
+                        "parameters": {"k0": k_0, "k1": k_1, "m": m, "s": s, "K": K},
+                        "results": {"seen_acc": gzsl_seen_acc, "unseen_acc": gzsl_unseen_acc, "harmonic_mean": H},
+                    },
                     f,
                     indent=2,
                 )

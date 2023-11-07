@@ -299,6 +299,8 @@ class BayesianClassifier:
                 )
                 class_id[class_index] = unique_genera[genus_idx]
                 class_index += 1
+            else:
+                print(f"Missing genus: {genus_idx=}, {genus=}")
 
         return sig_s, mu_s, v_s, class_id, sigmas
 
