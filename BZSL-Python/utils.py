@@ -16,7 +16,6 @@ class data_loader(object):
     ):
         print("The current working directory is")
         print(os.getcwd())
-
         self.datapath = os.path.join(datapath, dataset)  # '../data/'
         self.dataset = dataset
         self.side_info_source = side_info
@@ -37,7 +36,7 @@ class data_loader(object):
         if self.side_info_source == "dna_bioscan_clip":
             if self.alignment is True:
                 print("Aligned")
-                return os.path.join(self.datapath, "embeddings_from_bioscan_clip/dna_embedding_from_bioscan_clip_no_fine_tune_on_INSECT.csv")
+                return os.path.join(self.datapath, "embeddings_from_bioscan_clip/dna_embedding_from_bioscan_clip.csv")
             else:
                 exit("Not available: not aligned barcodes' feature from BioScan-CLIP")
 
@@ -154,7 +153,7 @@ class data_loader(object):
             elif self.bioscan_clip_image_feature is True:
                 # Overwrite here to use BioScan-CLIP feature
                 self.features = np.loadtxt(
-                    os.path.join(self.datapath, "embeddings_from_bioscan_clip", "image_embedding_from_bioscan_clip_no_fine_tune_on_INSECT.csv"),
+                    os.path.join(self.datapath, "embeddings_from_bioscan_clip", "image_embedding_from_bioscan_clip.csv"),
                     delimiter=',').T
             else:
                 if "features" in data_mat:
