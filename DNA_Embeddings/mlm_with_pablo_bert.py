@@ -109,11 +109,13 @@ def load_model(args, number_of_classes):
 def load_data(args):
     x = sio.loadmat(args.input_path)
 
+
     if args.using_aligned_barcode:
         barcodes = extract_clean_barcode_list_for_aligned(x["nucleotides_aligned"])
     else:
         barcodes = extract_clean_barcode_list(x["nucleotides"])
     labels = x["labels"].squeeze() - 1
+
 
     number_of_classes = np.unique(labels).shape[0]
 

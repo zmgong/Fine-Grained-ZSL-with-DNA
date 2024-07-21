@@ -1,4 +1,5 @@
 import json
+import os
 import time
 
 import numpy as np
@@ -21,6 +22,9 @@ class Model(object):
         self.embeddings = opt.embeddings
         self.output = opt.output
         self.use_genus = opt.genus
+        self.bioscan_clip_image_feature = opt.using_bioscan_clip_image_feature
+        self.using_fine_turned_vit_feature = opt.using_fine_turned_vit_feature
+        self.using_freeze_vit_feature = opt.using_freeze_vit_feature
 
         if opt.m and opt.m % self.pca_dim != 0:
             raise ValueError(
@@ -100,7 +104,8 @@ class Model(object):
 
             # Choose the K nearest neighbor to form surrogate class local prior
             classes = seenclasses[s_in[:K]]
-            classes, usclass_list = self.check_for_tie(uy[i], usclass_list, seenclasses, classes, s_in, K)
+            if self.dataset != "BIOSCAN_1M":
+                classes, usclass_list = self.check_for_tie(uy[i], usclass_list, seenclasses, classes, s_in, K)
 
             # Extract corresponding data
             idx = np.in1d(ytrain, classes)
@@ -298,7 +303,7 @@ class Model(object):
         # Default # features for PCA id Unconstrained model selected
 
         dataloader = data_loader(
-            self.datapath, self.dataset, self.side_info, self.tuning, self.alignment, self.embeddings, self.use_genus
+            self.datapath, self.dataset, self.side_info, self.tuning, self.alignment, self.embeddings, self.use_genus, bioscan_clip_image_feature=self.bioscan_clip_image_feature, using_fine_turned_vit_feature=self.using_fine_turned_vit_feature, using_freeze_vit_feature=self.using_freeze_vit_feature
         )
 
         # load attribute
@@ -340,11 +345,15 @@ class Model(object):
             m_range = [5 * dim, 25 * dim, 100 * dim, 500 * dim]
             print("Tuning is getting started...")
             try:
+                total = len(K_range) * len(k1_range) * len(k0_range) * len(m_range) * len(s_range)
+                count = 0
                 for kk in K_range:
                     for k_0 in k0_range:
                         for k_1 in k1_range:
                             for m in m_range:
                                 for ss in s_range:
+                                    count = count + 1
+                                    print(f"Progress: {count}/{total}")
                                     time_s = time.time()
                                     Sig_s, mu_s, v_s, class_id, _ = self.bayesian_cls_train(
                                         xtrain,
@@ -418,6 +427,9 @@ class Model(object):
                 alignment=self.alignment,
                 embeddings=self.embeddings,
                 use_genus=self.use_genus,
+                bioscan_clip_image_feature = self.bioscan_clip_image_feature,
+                using_fine_turned_vit_feature = self.using_fine_turned_vit_feature,
+                using_freeze_vit_feature = self.using_freeze_vit_feature
             )
         else:
             dataloader = data_loader(
@@ -428,6 +440,9 @@ class Model(object):
                 alignment=self.alignment,
                 embeddings=self.embeddings,
                 use_genus=self.use_genus,
+                bioscan_clip_image_feature=self.bioscan_clip_image_feature,
+                using_fine_turned_vit_feature = self.using_fine_turned_vit_feature,
+            using_freeze_vit_feature = self.using_freeze_vit_feature
             )
             att, k_0, k_1, m, s, K = dataloader.load_tuned_params()
             if self.k_0 is not None:
@@ -492,3 +507,25 @@ class Model(object):
 
         time_e = time.time()
         print("time cost: " + str(time_e - time_s))
+
+        # Convert class id to species name:
+        label_to_species_dict = dataloader.get_label_to_species_dict()
+
+        print(len(ytest_seen.squeeze().tolist()))
+        ytest_seen_gt_species = get_list_of_species_from_id(ytest_seen.squeeze().tolist(), label_to_species_dict)
+        ytest_unseen_gt_species = get_list_of_species_from_id(ytest_unseen.squeeze().tolist(), label_to_species_dict)
+        ypred_seen_species = get_list_of_species_from_id(ypred_seen.squeeze().tolist(), label_to_species_dict)
+        ypred_unseen_species = get_list_of_species_from_id(ypred_unseen.squeeze().tolist(), label_to_species_dict)
+        result_dict = {'seen_gt': ytest_seen_gt_species, 'unseen_gt': ytest_unseen_gt_species, 'seen_pred': ypred_seen_species, 'unseen_pred': ypred_unseen_species}
+        filename = 'pred_and_gt.json'
+
+        with open(filename, 'w') as f:
+            json.dump(result_dict, f, indent=4)
+
+
+
+def get_list_of_species_from_id(label_list, label_to_species):
+    species_list = []
+    for i in label_list:
+        species_list.append(label_to_species[i])
+    return species_list
