@@ -105,7 +105,7 @@ def load_data(aligned=True):
     label_us = species[x2["test_unseen_loc"][0] - 1]
     np.intersect1d(np.unique(labelY), np.unique(label_us) - 1)
 
-    # Cleaning empty classes
+    # Cleaning BIOSCAN_1M_image_dna_text.yaml classes
     idx = np.argwhere(np.all(trainY[..., :] == 0, axis=0))
     trainY = np.delete(trainY, idx, axis=1)
 
