@@ -734,7 +734,7 @@ class PreTrainedTokenizer(object):
 
             text: The sequence to be encoded.
             add_prefix_space: Only applies to GPT-2 and RoBERTa tokenizers. When `True`, this ensures that the sequence
-                begins with an BIOSCAN_1M_image_dna_text.yaml space. False by default except for when using RoBERTa with `add_special_tokens=True`.
+                begins with an BIOSCAN_1M_image_dna_text_one_cycle_lr_sche.yaml space. False by default except for when using RoBERTa with `add_special_tokens=True`.
             **kwargs: passed to the `prepare_for_tokenization` preprocessing method.
         """
         all_special_tokens = self.all_special_tokens
@@ -877,7 +877,7 @@ class PreTrainedTokenizer(object):
             return_tensors: (optional) can be set to 'tf' or 'pt' to return respectively TensorFlow tf.constant
                 or PyTorch torch.Tensor instead of a list of python integers.
             add_prefix_space: Only applies to GPT-2 and RoBERTa tokenizers. When `True`, this ensures that the sequence
-                begins with an BIOSCAN_1M_image_dna_text.yaml space. False by default except for when using RoBERTa with `add_special_tokens=True`.
+                begins with an BIOSCAN_1M_image_dna_text_one_cycle_lr_sche.yaml space. False by default except for when using RoBERTa with `add_special_tokens=True`.
             **kwargs: passed to the `self.tokenize()` method
         """
         encoded_inputs = self.encode_plus(
@@ -943,7 +943,7 @@ class PreTrainedTokenizer(object):
             return_tensors: (optional) can be set to 'tf' or 'pt' to return respectively TensorFlow tf.constant
                 or PyTorch torch.Tensor instead of a list of python integers.
             add_prefix_space: Only applies to GPT-2 and RoBERTa tokenizers. When `True`, this ensures that the sequence
-                begins with an BIOSCAN_1M_image_dna_text.yaml space. False by default except for when using RoBERTa with `add_special_tokens=True`.
+                begins with an BIOSCAN_1M_image_dna_text_one_cycle_lr_sche.yaml space. False by default except for when using RoBERTa with `add_special_tokens=True`.
             return_token_type_ids: (optional) Set to False to avoid returning token_type_ids (default True).
             return_attention_mask: (optional) Set to False to avoid returning attention mask (default True)
             return_overflowing_tokens: (optional) Set to True to return overflowing token information (default False).
