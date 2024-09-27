@@ -509,19 +509,19 @@ class Model(object):
         print("time cost: " + str(time_e - time_s))
 
         # Convert class id to species name:
-        # label_to_species_dict = dataloader.get_label_to_species_dict()
+        label_to_species_dict = dataloader.get_label_to_species_dict()
 
 
-        # print(len(ytest_seen.squeeze().tolist()))
-        # ytest_seen_gt_species = get_list_of_species_from_id(ytest_seen.squeeze().tolist(), label_to_species_dict)
-        # ytest_unseen_gt_species = get_list_of_species_from_id(ytest_unseen.squeeze().tolist(), label_to_species_dict)
-        # ypred_seen_species = get_list_of_species_from_id(ypred_seen.squeeze().tolist(), label_to_species_dict)
-        # ypred_unseen_species = get_list_of_species_from_id(ypred_unseen.squeeze().tolist(), label_to_species_dict)
-        # result_dict = {'seen_gt': ytest_seen_gt_species, 'unseen_gt': ytest_unseen_gt_species, 'seen_pred': ypred_seen_species, 'unseen_pred': ypred_unseen_species}
-        # filename = 'pred_and_gt.json'
-        # 
-        # with open(filename, 'w') as f:
-        #     json.dump(result_dict, f, indent=4)
+        print(len(ytest_seen.squeeze().tolist()))
+        ytest_seen_gt_species = get_list_of_species_from_id(ytest_seen.squeeze().tolist(), label_to_species_dict)
+        ytest_unseen_gt_species = get_list_of_species_from_id(ytest_unseen.squeeze().tolist(), label_to_species_dict)
+        ypred_seen_species = get_list_of_species_from_id(ypred_seen.squeeze().tolist(), label_to_species_dict)
+        ypred_unseen_species = get_list_of_species_from_id(ypred_unseen.squeeze().tolist(), label_to_species_dict)
+        result_dict = {'seen_gt': ytest_seen_gt_species, 'unseen_gt': ytest_unseen_gt_species, 'seen_pred': ypred_seen_species, 'unseen_pred': ypred_unseen_species}
+        filename = f'{self.dataset}_pred_and_gt.json'
+
+        with open(filename, 'w') as f:
+            json.dump(result_dict, f, indent=4)
 
 
 
