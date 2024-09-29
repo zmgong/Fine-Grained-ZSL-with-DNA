@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 
 class data_loader(object):
     def __init__(
-        self, datapath, dataset, side_info="original", tuning=False, alignment=True, embeddings=None, use_genus=False, bioscan_clip_image_feature=False, using_fine_turned_vit_feature=False, using_freeze_vit_feature = False
+        self, datapath, dataset, side_info="original", tuning=False, alignment=True, embeddings=None, use_genus=False, bioscan_clip_image_feature_fine_tuned_on_insect=False, bioscan_clip_image_feature_not_fine_tuned_on_insect=False, bioscan_clip_image_feature=False, using_fine_turned_vit_feature=False, using_freeze_vit_feature = False
     ):
         print("The current working directory is")
         print(os.getcwd())
@@ -39,6 +39,12 @@ class data_loader(object):
                 return os.path.join(self.datapath, "embeddings_from_bioscan_clip/dna_embedding_from_bioscan_clip.csv")
             else:
                 exit("Not available: not aligned barcodes' feature from BioScan-CLIP")
+
+        if self.side_info_source == "dna_bioscan_clip_no_fine_turned_on_INSECT":
+            return os.path.join(self.datapath, "ICLR_embed_backup/trained_on_BIOSCAN_1M/dna_embedding_from_bioscan_clip_no_fine_tuned_on_INSECT.csv")
+
+        if self.side_info_source == "dna_bioscan_clip_fine_turned_on_INSECT":
+            return os.path.join(self.datapath, "ICLR_embed_backup/finetuned_on_INSECT/dna_embedding_from_bioscan_clip.csv")
 
         if self.side_info_source == "dna":
             if self.alignment is True:

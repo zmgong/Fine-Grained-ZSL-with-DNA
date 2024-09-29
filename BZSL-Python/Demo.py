@@ -4,12 +4,15 @@ import argparse
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--side_info", default=None, type=str)
+parser.add_argument("--image_feature_path", default=None, type=str)
 parser.add_argument("--pca_dim", default=500, type=int)
 parser.add_argument("--datapath", default="../data/", type=str)
 parser.add_argument("--dataset", default="INSECT", type=str) # BIOSCAN_1M
 parser.add_argument("--tuning", default=False, action="store_true")
 parser.add_argument("--alignment", default=False, action="store_true")
 parser.add_argument("--using_bioscan_clip_image_feature", default=False, action="store_true")
+parser.add_argument("--bioscan_clip_image_feature_fine_tuned_on_insect", default=False, action="store_true")
+parser.add_argument("--bioscan_clip_image_feature_not_fine_tuned_on_insect", default=False, action="store_true")
 parser.add_argument("--using_fine_turned_vit_feature", default=False, action="store_true")
 parser.add_argument("--using_freeze_vit_feature", default=False, action="store_true")
 parser.add_argument("--embeddings", default=None, type=str)
