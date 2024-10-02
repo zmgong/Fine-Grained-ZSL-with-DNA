@@ -25,7 +25,6 @@ class Model(object):
         self.using_fine_turned_vit_feature = opt.using_fine_turned_vit_feature
         self.using_freeze_vit_feature = opt.using_freeze_vit_feature
         self.image_feature_path = opt.image_feature_path
-        self.bioscan_clip_image_feature_fine_tuned_on_insect = opt.bioscan_clip_image_feature_fine_tuned_on_insect
         self.bioscan_clip_image_feature_not_fine_tuned_on_insect = opt.bioscan_clip_image_feature_not_fine_tuned_on_insect
 
         if opt.m and opt.m % self.pca_dim != 0:
@@ -440,7 +439,6 @@ class Model(object):
                 alignment=self.alignment,
                 embeddings=self.embeddings,
                 use_genus=self.use_genus,
-                bioscan_clip_image_feature_fine_tuned_on_insect=self.bioscan_clip_image_feature_fine_tuned_on_insect,
                 bioscan_clip_image_feature_not_fine_tuned_on_insect=self.bioscan_clip_image_feature_not_fine_tuned_on_insect,
                 bioscan_clip_image_feature = self.bioscan_clip_image_feature,
                 using_fine_turned_vit_feature = self.using_fine_turned_vit_feature,
@@ -455,7 +453,6 @@ class Model(object):
                 alignment=self.alignment,
                 embeddings=self.embeddings,
                 use_genus=self.use_genus,
-                bioscan_clip_image_feature_fine_tuned_on_insect=self.bioscan_clip_image_feature_fine_tuned_on_insect,
                 bioscan_clip_image_feature_not_fine_tuned_on_insect=self.bioscan_clip_image_feature_not_fine_tuned_on_insect,
                 bioscan_clip_image_feature=self.bioscan_clip_image_feature,
                 using_fine_turned_vit_feature = self.using_fine_turned_vit_feature,
