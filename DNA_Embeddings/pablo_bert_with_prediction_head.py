@@ -4,7 +4,7 @@ from opt_einsum.backends import torch
 from torch import optim
 import torch
 import numpy as np
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import LinearLR
 from tqdm import tqdm
 
 
@@ -55,21 +55,21 @@ def remove_extra_pre_fix(state_dict):
     return new_state_dict
 
 
-def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12, num_classes=1213):
-    criterion = nn.CrossEntropyLoss()
-    # criterion = categorical_cross_entropy()
-    # optimizer = optim.Adam(model.parameters(), lr=lr)
-    optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
-    scheduler = StepLR(optimizer, step_size=3, gamma=0.5)
+def train_and_eval(model, trainloader, testloader, device, lr=5e-4, n_epoch=12, num_classes=1213):
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+    scheduler = LinearLR(optimizer, start_factor=1.0, end_factor=0.1, total_iters=n_epoch * len(trainloader))
     print("start training")
     loss = None
-    for epoch in range(n_epoch):  # loop over the dataset multiple times
-        # model.train()
+    epoch_pbar = tqdm(range(n_epoch), total=n_epoch)
+    for epoch in epoch_pbar:  # loop over the dataset multiple times
+        epoch_pbar.set_description(f"Epoch: {epoch}")
+        model.train()
         running_loss = 0.0
         pbar = tqdm(enumerate(trainloader, 0), total=len(trainloader))
         for i, (inputs, labels) in pbar:
             if loss != None:
                 pbar.set_description("Epoch: " + str(epoch) + " || loss: " + str(loss.item()))
+                pbar.set_description(f"Epoch: {epoch} || loss: {loss.item()} || lr: {scheduler.get_last_lr()}")
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = inputs.to(device), labels.to(device)
 
@@ -78,18 +78,17 @@ def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12,
             # forward + backward + optimize
             outputs, _ = model(inputs)
 
-            # loss = criterion(outputs, labels)
-
             loss = categorical_cross_entropy(outputs, labels, num_classes=num_classes)
 
             loss.backward()
 
             optimizer.step()
+            scheduler.step()
             # print statistics
             running_loss += loss.item()
 
         with torch.no_grad():
-            # model.eval()
+            model.eval()
             train_correct = 0
             train_total = 0
             for data in trainloader:
@@ -124,8 +123,6 @@ def train_and_eval(model, trainloader, testloader, device, lr=0.005, n_epoch=12,
             + str(train_correct / train_total)
             + "|| Val Accuracy: "
             + str(correct / total)
-            + "|| lr: "
-            + str(scheduler.get_last_lr())
         )
         running_loss = 0
         scheduler.step()

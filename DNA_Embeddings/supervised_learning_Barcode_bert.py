@@ -18,6 +18,15 @@ device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
 random.seed(10)
 
 
+import torch
+
+
+"""
+This script is created for fine-tuning the BarcodeBERT model on the INSECT dataset.
+Then extract the class-level features for downstream tasks.
+"""
+
+
 class DNADataset(Dataset):
     def __init__(self, barcodes, labels, tokenizer, pre_tokenize=False):
         # Vocabulary
@@ -43,10 +52,12 @@ class DNADataset(Dataset):
 def load_data(args):
     x = sio.loadmat(args.input_path)
 
-    if args.using_aligned_barcode:
-        barcodes = extract_clean_barcode_list_for_aligned(x["nucleotides_aligned"])
-    else:
-        barcodes = extract_clean_barcode_list(x["nucleotides"])
+    # if args.using_aligned_barcode:
+    #     barcodes = extract_clean_barcode_list_for_aligned(x["nucleotides_aligned"])
+    # else:
+    #     barcodes = extract_clean_barcode_list(x["nucleotides"])
+    barcodes = extract_clean_barcode_list_for_aligned(x["nucleotides_aligned"])
+
     labels = x["labels"].squeeze() - 1
 
     stratified_split = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
@@ -130,14 +141,14 @@ def construct_dataloader(X_train, X_val, y_train, y_val, batch_size, tokenizer, 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_path", default="../data/INSECT/res101.mat", type=str)
-    parser.add_argument("--model", choices=["bioscanbert", "barcodebert", "dnabert", "dnabert2"], default="barcodebert")
-    parser.add_argument("--checkpoint", default="bert_checkpoint/5-mer/model_41.pth", type=str)
+    parser.add_argument("--model", choices=["bioscanbert", "barcodebert", "dnabert", "dnabert2", "new_barcode_bert"], default="new_barcode_bert")
+    parser.add_argument("--checkpoint", default="../checkpoints/BarcodeBERT_before_tuning/(CANADA-1.5M)-BEST_k4_4_4_w1_m0_r0_wd.pt", type=str)
     parser.add_argument("--output_dir", type=str, default="../data/INSECT/")
-    parser.add_argument("--using_aligned_barcode", default=False, action="store_true")
-    parser.add_argument("--n_epoch", default=12, type=int)
+    # parser.add_argument("--using_aligned_barcode", default=False, action="store_true")
+    parser.add_argument("--n_epoch", default=100, type=int)
     parser.add_argument("-k", "--kmer", default=6, type=int, dest="k", help="k-mer value for tokenization")
     parser.add_argument(
-        "--batch-size", default=32, type=int, dest="batch_size", help="batch size for supervised training"
+        "--batch-size", default=128, type=int, dest="batch_size", help="batch size for supervised training"
     )
     parser.add_argument(
         "--model-output", default=None, type=str, dest="model_out", help="path to save model after training"

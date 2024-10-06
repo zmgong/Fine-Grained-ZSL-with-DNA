@@ -7,8 +7,47 @@ from transformers import AutoModel, AutoTokenizer, BertConfig, BertForMaskedLM
 
 from dnabert.tokenization_dna import DNATokenizer
 from pablo_bert_with_prediction_head import Bert_With_Prediction_Head
+from transformers import BertConfig, BertForMaskedLM, BertForTokenClassification
 
 device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
+
+
+def remove_extra_pre_fix(state_dict):
+    new_state_dict = {}
+    for key, value in state_dict.items():
+        if key.startswith("module."):
+            key = key[7:]
+        new_state_dict[key] = value
+    return new_state_dict
+
+
+def load_pretrained_model(checkpoint_path, device=None):
+    """
+    Load a pretrained model from a checkpoint file.
+
+    Parameters
+    ----------
+    checkpoint_path : str
+        Path to the pretrained checkpoint file.
+
+    Returns
+    -------
+    model : torch.nn.Module
+        The pretrained model.
+    ckpt : dict
+        The contents of the checkpoint file.
+    """
+    ckpt = torch.load(checkpoint_path, map_location=device)
+
+    assert "bert_config" in ckpt  # You may be trying to load an old checkpoint
+
+    bert_config = BertConfig(**ckpt["bert_config"])
+    model = BertForTokenClassification(bert_config)
+    removed_prefix_state_dict = remove_extra_pre_fix(ckpt["model"])
+    model.load_state_dict(remove_extra_pre_fix(ckpt["model"]))
+    model.eval()
+    print(f"Loaded model from {checkpoint_path}")
+    return model, ckpt
 
 
 class KmerTokenizer:
@@ -28,7 +67,7 @@ class KmerTokenizer:
     def __call__(self, dna_sequence: str) -> list[str]:
         tokens = []
         for i in range(0, len(dna_sequence) - self.k + 1, self.stride):
-            k_mer = dna_sequence[i : i + self.k]
+            k_mer = dna_sequence[i: i + self.k]
             tokens.append(k_mer)
         return tokens
 
@@ -70,7 +109,7 @@ def split_input_barcode_for_dnabert(barcode: str, k: int = 6) -> str:
     if isinstance(barcode, list):
         return [split_input_barcode_for_dnabert(bc, k) for bc in barcode]
 
-    return " ".join([barcode[idx : idx + k] for idx in range(len(barcode) - k + 1)])
+    return " ".join([barcode[idx: idx + k] for idx in range(len(barcode) - k + 1)])
 
 
 def get_dnabert_encoder(tokenizer, max_len: int, k: int = 6):
@@ -93,7 +132,7 @@ def get_dnabert_encoder(tokenizer, max_len: int, k: int = 6):
 
 
 def load_model(
-    args, *, k: int = 6, padding: bool = False, classification_head: bool = False, num_classes: Optional[int] = None
+        args, *, k: int = 6, padding: bool = False, classification_head: bool = False, num_classes: Optional[int] = None
 ):
     kmer_iter = (["".join(kmer)] for kmer in product("ACGT", repeat=k))
     vocab = build_vocab_from_iterator(kmer_iter, specials=["<MASK>", "<CLS>", "<UNK>"])
@@ -114,6 +153,19 @@ def load_model(
         state_dict = torch.load(args.checkpoint, map_location=torch.device("cpu"))
         state_dict = remove_extra_pre_fix(state_dict)
         model.load_state_dict(state_dict)
+
+    elif args.model == "new_barcode_bert":
+
+        tokenizer = KmerTokenizer(k, stride=k)
+        model, ckpt = load_pretrained_model(args.checkpoint, device=None)
+        try:
+            k = ckpt['config'].k_mer
+        except:
+            pass
+        tokenizer = KmerTokenizer(k, stride=k)
+        sequence_pipeline = lambda x: [0, *vocab(tokenizer(pad(x)))]
+
+
 
     elif args.model == "dnabert":
         max_len = 512

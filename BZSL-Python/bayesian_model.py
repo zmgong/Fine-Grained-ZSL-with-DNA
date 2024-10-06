@@ -311,7 +311,6 @@ class Model(object):
             self.alignment,
             self.embeddings,
             self.use_genus,
-            bioscan_clip_image_feature_fine_tuned_on_insect=self.bioscan_clip_image_feature_fine_tuned_on_insect,
             bioscan_clip_image_feature_not_fine_tuned_on_insect=self.bioscan_clip_image_feature_not_fine_tuned_on_insect,
             bioscan_clip_image_feature=self.bioscan_clip_image_feature,
             using_fine_turned_vit_feature=self.using_fine_turned_vit_feature,
