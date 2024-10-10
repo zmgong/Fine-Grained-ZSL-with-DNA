@@ -43,7 +43,7 @@ class Model(object):
         dim = xtrain.shape[1]
         uy = np.unique(ytrain)
         nc = len(uy)
-        if model_v == "constrained":
+        if model_v == 'constrained':
             class_means = np.zeros((nc, dim))
             for j in range(nc):
                 idd = np.in1d(ytrain, uy[j])
@@ -80,6 +80,7 @@ class Model(object):
 
     ### Calculating Posterior Predictive Distribution parameters ###
     def calculate_ppd_params(self, xtrain, ytrain, att_seen, att_unseen, unseenclasses, K, Psi, mu0, m, k0, k1):
+
         seenclasses = np.unique(ytrain)
         nc = len(seenclasses) + len(unseenclasses)
         n, d = xtrain.shape
@@ -97,6 +98,7 @@ class Model(object):
         cnt = 0
         # Main for loop for  unseen classes params estimation
         for i in range(ncl):
+
             # Calculating Euclidean distance between the selected unseen class
             # attributes and all seen classes
             tmp = att_unseen[i, np.newaxis]
@@ -522,24 +524,24 @@ class Model(object):
         print("time cost: " + str(time_e - time_s))
 
         # Convert class id to species name:
-        label_to_species_dict = dataloader.get_label_to_species_dict()
+        # label_to_species_dict = dataloader.get_label_to_species_dict()
 
 
-        print(len(ytest_seen.squeeze().tolist()))
-        ytest_seen_gt_species = get_list_of_species_from_id(ytest_seen.squeeze().tolist(), label_to_species_dict)
-        ytest_unseen_gt_species = get_list_of_species_from_id(ytest_unseen.squeeze().tolist(), label_to_species_dict)
-        ypred_seen_species = get_list_of_species_from_id(ypred_seen.squeeze().tolist(), label_to_species_dict)
-        ypred_unseen_species = get_list_of_species_from_id(ypred_unseen.squeeze().tolist(), label_to_species_dict)
-        result_dict = {'seen_gt': ytest_seen_gt_species, 'unseen_gt': ytest_unseen_gt_species, 'seen_pred': ypred_seen_species, 'unseen_pred': ypred_unseen_species}
-        filename = f'{self.dataset}_pred_and_gt.json'
-
-        with open(filename, 'w') as f:
-            json.dump(result_dict, f, indent=4)
-
-
-
-def get_list_of_species_from_id(label_list, label_to_species):
-    species_list = []
-    for i in label_list:
-        species_list.append(label_to_species[i])
-    return species_list
+#         print(len(ytest_seen.squeeze().tolist()))
+#         ytest_seen_gt_species = get_list_of_species_from_id(ytest_seen.squeeze().tolist(), label_to_species_dict)
+#         ytest_unseen_gt_species = get_list_of_species_from_id(ytest_unseen.squeeze().tolist(), label_to_species_dict)
+#         ypred_seen_species = get_list_of_species_from_id(ypred_seen.squeeze().tolist(), label_to_species_dict)
+#         ypred_unseen_species = get_list_of_species_from_id(ypred_unseen.squeeze().tolist(), label_to_species_dict)
+#         result_dict = {'seen_gt': ytest_seen_gt_species, 'unseen_gt': ytest_unseen_gt_species, 'seen_pred': ypred_seen_species, 'unseen_pred': ypred_unseen_species}
+#         filename = f'{self.dataset}_pred_and_gt.json'
+#
+#         with open(filename, 'w') as f:
+#             json.dump(result_dict, f, indent=4)
+#
+#
+#
+# def get_list_of_species_from_id(label_list, label_to_species):
+#     species_list = []
+#     for i in label_list:
+#         species_list.append(label_to_species[i])
+#     return species_list

@@ -102,6 +102,34 @@ class data_loader(object):
                 print("Not aligned")
                 return os.path.join(self.datapath, "dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40.csv")
 
+        elif self.side_info_source == "dna_pablo_bert_pre_trained_on_5m_with_fine_tuning":
+            return os.path.join(
+                self.datapath,
+                "embedding_extract_from_new_BarcodeBERT",
+                "dna_embedding_from_barcode_bert_pre_trained_on_BIOSCAN-5M_with_fine_tuning.csv"
+            )
+
+        elif self.side_info_source == "dna_pablo_bert_pre_trained_on_5m_without_fine_tuning":
+            return os.path.join(
+                self.datapath,
+                "embedding_extract_from_new_BarcodeBERT",
+                "dna_embedding_from_barcode_bert_pre_trained_on_BIOSCAN-5M_without_fine_tuning.csv"
+            )
+
+        elif self.side_info_source == "dna_pablo_bert_pre_trained_on_canada_1_5M_with_fine_tuning":
+            return os.path.join(
+                self.datapath,
+                "embedding_extract_from_new_BarcodeBERT",
+                "dna_embedding_from_barcode_bert_pre_trained_on_CANADA-1.5M_with_fine_tuning.csv"
+            )
+
+        elif self.side_info_source == "dna_pablo_bert_pre_trained_on_canada_1_5M_without_fine_tuning":
+            return os.path.join(
+                self.datapath,
+                "embedding_extract_from_new_BarcodeBERT",
+                "dna_embedding_from_barcode_bert_pre_trained_on_CANADA-1.5M_without_fine_tuning.csv"
+            )
+
         if self.side_info_source == "w2v":
             return splits_mat["att_w2v"]
 
