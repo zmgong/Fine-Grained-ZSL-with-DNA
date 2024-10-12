@@ -20,15 +20,36 @@ from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from torchtext.vocab import build_vocab_from_iterator
 from tqdm import tqdm
-from transformers import BertForMaskedLM, BertConfig
+from transformers import BertForMaskedLM, BertConfig, BertForTokenClassification
 from transformers.modeling_outputs import TokenClassifierOutput
-
+from torchtext.vocab import vocab as build_vocab_from_dict
 from bert_extract_dna_feature import extract_clean_barcode_list_for_aligned
+import torch.nn.functional as F
 
 """# Load data and tokenize """
 
-device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
-def extract_and_save_class_level_feature(args, model, dataloader_all_data):
+
+class ClassificationModel(nn.Module):
+    def __init__(self, base_model, num_labels):
+        super(ClassificationModel, self).__init__()
+        self.num_labels = num_labels
+        self.base_model = base_model
+        self.hidden_size = self.base_model.config.hidden_size
+        self.classifier = nn.Linear(self.hidden_size, self.num_labels)
+
+    def forward(self, input_ids=None, mask=None, labels=None):
+        # Getting the embedding
+        outputs = self.base_model(input_ids=input_ids, attention_mask=mask)
+        embeddings = outputs.hidden_states[-1]
+        GAP_embeddings = embeddings.mean(1)  # TODO: Swap between GAP and CLS
+        # calculate losses
+        logits = self.classifier(GAP_embeddings.view(-1, self.hidden_size))
+        loss = None
+        if labels is not None:
+            loss = F.cross_entropy(logits.view(-1, self.num_labels), labels.view(-1))
+        return TokenClassifierOutput(loss=loss, logits=logits, hidden_states=outputs.hidden_states)
+
+def extract_and_save_class_level_feature(args, model, dataloader_all_data, device="cuda"):
     all_label = []
     dict_emb = {}
 
@@ -89,6 +110,65 @@ def extract_and_save_class_level_feature(args, model, dataloader_all_data):
         )
         print(f"DNA embeddings is saved in {embedding_path}.")
 
+
+class DNADataset(Dataset):
+    def __init__(self, x, y, k_mer=4, stride=4, max_len=256, randomize_offset=False, tokenizer="kmer",
+                 tokenize_n_nucleotide=False):
+        self.k_mer = k_mer
+        self.stride = k_mer if stride is None else stride
+        self.max_len = max_len
+        self.randomize_offset = randomize_offset
+
+        # Vocabulary
+        base_pairs = "ACGT"
+        self.special_tokens = ["[MASK]", "[UNK]"]  # ["[MASK]", "[CLS]", "[SEP]", "[PAD]", "[EOS]", "[UNK]"]
+        UNK_TOKEN = "[UNK]"
+
+        if tokenize_n_nucleotide:
+            # Encode kmers which contain N differently depending on where it is
+            base_pairs += "N"
+
+        if tokenizer == "kmer":
+            kmers = ["".join(kmer) for kmer in product(base_pairs, repeat=self.k_mer)]
+
+            # Separate between good (idx < 4**k) and bad k-mers (idx > 4**k) for prediction
+            if tokenize_n_nucleotide:
+                prediction_kmers = []
+                other_kmers = []
+                for kmer in kmers:
+                    if "N" in kmer:
+                        other_kmers.append(kmer)
+                    else:
+                        prediction_kmers.append(kmer)
+
+                kmers = prediction_kmers + other_kmers
+
+            kmer_dict = dict.fromkeys(kmers, 1)
+            self.vocab = build_vocab_from_dict(kmer_dict, specials=self.special_tokens)
+            self.vocab.set_default_index(self.vocab[UNK_TOKEN])
+            self.vocab_size = len(self.vocab)
+            self.tokenizer = KmerTokenizer(
+                self.k_mer, self.vocab, stride=self.stride, padding=True, max_len=self.max_len
+            )
+        else:
+            raise ValueError(f'Tokenizer "{tokenizer}" not recognized.')
+
+        self.barcodes = x
+        self.labels = y
+        self.num_labels = len(np.unique(self.labels))
+
+    def __len__(self):
+        return len(self.barcodes)
+
+    def __getitem__(self, idx):
+        if self.randomize_offset:
+            offset = torch.randint(self.k_mer, (1,)).item()
+        else:
+            offset = 0
+        processed_barcode, att_mask = self.tokenizer(self.barcodes[idx], offset=offset)
+        label = torch.tensor(self.labels[idx], dtype=torch.int64)
+        return processed_barcode, att_mask, label
+
 class KmerTokenizer(object):
     def __init__(self, k, vocabulary_mapper, stride=1, padding=False, max_len=660):
         self.k = k
@@ -117,56 +197,82 @@ class KmerTokenizer(object):
         return tokens, att_mask
 
 
-class DNADataset(Dataset):
-    def __init__(self, x, y, k_mer=4, stride=4, max_len=256):
-        self.k_mer = k_mer
-        self.stride = stride
-        self.max_len = max_len
+def __init__(self, x, y, k_mer=4, stride=4, max_len=256, randomize_offset=False, tokenizer="kmer",
+             tokenize_n_nucleotide=False):
+    self.k_mer = k_mer
+    self.stride = k_mer if stride is None else stride
+    self.max_len = max_len
+    self.randomize_offset = randomize_offset
 
-        # Vocabulary
-        kmer_iter = ([''.join(kmer)] for kmer in product('ACGT', repeat=self.k_mer))
-        self.vocab = build_vocab_from_iterator(kmer_iter, specials=["<MASK>", "<CLS>", "<UNK>"])
-        self.vocab.set_default_index(self.vocab["<UNK>"])
+    # Vocabulary
+    base_pairs = "ACGT"
+    self.special_tokens = ["[MASK]", "[UNK]"]  # ["[MASK]", "[CLS]", "[SEP]", "[PAD]", "[EOS]", "[UNK]"]
+    UNK_TOKEN = "[UNK]"
+
+    if tokenize_n_nucleotide:
+        # Encode kmers which contain N differently depending on where it is
+        base_pairs += "N"
+
+    if tokenizer == "kmer":
+        kmers = ["".join(kmer) for kmer in product(base_pairs, repeat=self.k_mer)]
+
+        # Separate between good (idx < 4**k) and bad k-mers (idx > 4**k) for prediction
+        if tokenize_n_nucleotide:
+            prediction_kmers = []
+            other_kmers = []
+            for kmer in kmers:
+                if "N" in kmer:
+                    other_kmers.append(kmer)
+                else:
+                    prediction_kmers.append(kmer)
+
+            kmers = prediction_kmers + other_kmers
+
+        kmer_dict = dict.fromkeys(kmers, 1)
+        self.vocab = build_vocab_from_dict(kmer_dict, specials=self.special_tokens)
+        self.vocab.set_default_index(self.vocab[UNK_TOKEN])
         self.vocab_size = len(self.vocab)
+        self.tokenizer = KmerTokenizer(
+            self.k_mer, self.vocab, stride=self.stride, padding=True, max_len=self.max_len
+        )
+    else:
+        raise ValueError(f'Tokenizer "{tokenizer}" not recognized.')
 
-        self.tokenizer = KmerTokenizer(self.k_mer, self.vocab, stride=self.stride, padding=True, max_len=self.max_len)
+    self.barcodes = x
+    self.labels = y
+    self.num_labels = len(np.unique(self.labels))
 
-        self.barcodes = x
-        self.labels = y
-        self.num_labels = len(np.unique(self.labels))
+def __len__(self):
+    return len(self.barcodes)
 
-    def __len__(self):
-        return len(self.barcodes)
-
-    def __getitem__(self, idx):
-        processed_barcode, att_mask = self.tokenizer(self.barcodes[idx])
-        processed_barcode = torch.tensor(processed_barcode, dtype=torch.int64)
-        att_mask =torch.tensor(att_mask, dtype=torch.int64)
-        label = torch.tensor((self.labels[idx]), dtype=torch.int64)
-        return processed_barcode, att_mask, label
+def __getitem__(self, idx):
+    if self.randomize_offset:
+        offset = torch.randint(self.k_mer, (1,)).item()
+    else:
+        offset = 0
+    processed_barcode, att_mask = self.tokenizer(self.barcodes[idx], offset=offset)
+    label = torch.tensor(self.labels[idx], dtype=torch.int64)
+    return processed_barcode, att_mask, label
 
 
-class Classification_model(nn.Module):
-    def __init__(self, checkpoint, num_labels, vocab_size):
-        super(Classification_model, self).__init__()
+class ClassificationModel(nn.Module):
+    def __init__(self, base_model, num_labels):
+        super(ClassificationModel, self).__init__()
         self.num_labels = num_labels
-        # Load Model with given checkpoint
-        self.model = BertForMaskedLM(BertConfig(vocab_size=int(vocab_size), output_hidden_states=True))
-        self.model.load_state_dict(torch.load(checkpoint, map_location="cuda:0"), strict=False)
-        self.classifier = nn.Linear(768, self.num_labels)
+        self.base_model = base_model
+        self.hidden_size = self.base_model.config.hidden_size
+        self.classifier = nn.Linear(self.hidden_size, self.num_labels)
 
-    def forward(self, input_ids=None, labels=None):
+    def forward(self, input_ids=None, mask=None, labels=None):
         # Getting the embedding
-        outputs = self.model(input_ids=input_ids)
+        outputs = self.base_model(input_ids=input_ids, attention_mask=mask)
         embeddings = outputs.hidden_states[-1]
-        GAP_embeddings = embeddings.mean(1)
+        GAP_embeddings = embeddings.mean(1)  # TODO: Swap between GAP and CLS
         # calculate losses
-        logits = self.classifier(GAP_embeddings.view(-1, 768))
+        logits = self.classifier(GAP_embeddings.view(-1, self.hidden_size))
         loss = None
         if labels is not None:
-            loss_fct = nn.CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-
+            loss = F.cross_entropy(logits.view(-1, self.num_labels), labels.view(-1))
         return TokenClassifierOutput(loss=loss, logits=logits, hidden_states=outputs.hidden_states)
 
 
@@ -181,18 +287,18 @@ def train(args, dataloader, device, model, optimizer, scheduler):
     continue_epoch = 0
     dataloader_train, dataloader_dev = dataloader[0], dataloader[1]
 
-    saving_path = args["input_path"] + "checkpoints/"
+    saving_path = os.path.join(args["save_checkpoint_path"], f"pre_trained_with{args['pre_trained_on']}", "fine_tuning_checkpoints/")
     if not os.path.isdir(saving_path):
-        os.mkdir(saving_path)
+        os.makedirs(saving_path, exist_ok=True)
 
-    if args['checkpoint']:
-        continue_epoch = 4
-        model.load_state_dict(torch.load(saving_path + f'model_{continue_epoch}.pth'))
-        optimizer.load_state_dict(torch.load(saving_path + f"optimizer_{continue_epoch}.pth"))
-        scheduler.load_state_dict(torch.load(saving_path + f"scheduler_{continue_epoch}.pth"))
-        a_file = open(saving_path + f"loss_{device}.pkl", "rb")
-        epoch_loss_list = pickle.load(a_file)
-        print("Training is continued...")
+    # if args['checkpoint']:
+    #     continue_epoch = 4
+    #     model.load_state_dict(torch.load(saving_path + f'model_{continue_epoch}.pth'))
+    #     optimizer.load_state_dict(torch.load(saving_path + f"optimizer_{continue_epoch}.pth"))
+    #     scheduler.load_state_dict(torch.load(saving_path + f"scheduler_{continue_epoch}.pth"))
+    #     a_file = open(saving_path + f"loss_{device}.pkl", "rb")
+    #     epoch_loss_list = pickle.load(a_file)
+    #     print("Training is continued...")
 
     sys.stdout.write("Training is started:\n")
 
@@ -233,9 +339,9 @@ def train(args, dataloader, device, model, optimizer, scheduler):
 
         sys.stdout.write(f"Epoch {epoch}, Device {device}: Loss is {epoch_loss}\n")
 
-        torch.save(model.state_dict(), saving_path + "model_" + str(epoch) + '.pth')
-        torch.save(optimizer.state_dict(), saving_path + "optimizer_" + str(epoch) + '.pth')
-        torch.save(scheduler.state_dict(), saving_path + "scheduler_" + str(epoch) + '.pth')
+        # torch.save(model.state_dict(), saving_path + "model_" + str(epoch) + '.pth')
+        # torch.save(optimizer.state_dict(), saving_path + "optimizer_" + str(epoch) + '.pth')
+        # torch.save(scheduler.state_dict(), saving_path + "scheduler_" + str(epoch) + '.pth')
 
         model.eval()
         for i, batch in enumerate(tqdm(dataloader_dev)):
@@ -292,7 +398,7 @@ def test(dataloader_test, device, model):
 
 def ddp_setup(rank: int, world_size: int):
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
+    os.environ['MASTER_PORT'] = '5000'
     torch.distributed.init_process_group("nccl", rank=rank, world_size=world_size)
     torch.cuda.set_device(rank)
 
@@ -332,6 +438,44 @@ def load_data(args):
 
     return x_train, y_train, x_val, y_val, barcodes, labels, number_of_classes
 
+def remove_extra_pre_fix(state_dict):
+    new_state_dict = {}
+    for key, value in state_dict.items():
+        if key.startswith("module."):
+            key = key[7:]
+        new_state_dict[key] = value
+    return new_state_dict
+
+def load_pretrained_model(checkpoint_path, device=None):
+    """
+    Load a pretrained model from a checkpoint file.
+
+    Parameters
+    ----------
+    checkpoint_path : str
+        Path to the pretrained checkpoint file.
+
+    Returns
+    -------
+    model : torch.nn.Module
+        The pretrained model.
+    ckpt : dict
+        The contents of the checkpoint file.
+    """
+    print(f"\nLoading model from {checkpoint_path}")
+    ckpt = torch.load(checkpoint_path, map_location=device)
+    model_ckpt = remove_extra_pre_fix(ckpt["model"])
+
+    assert "bert_config" in ckpt  # You may be trying to load an old checkpoint
+
+    bert_config = BertConfig(**ckpt["bert_config"])
+    model = BertForTokenClassification(bert_config)
+    if "bert.embeddings.position_ids" in model_ckpt:
+        model_ckpt.pop("bert.embeddings.position_ids")
+
+    model.load_state_dict(model_ckpt)
+    print(f"Loaded model from {checkpoint_path}")
+    return model, ckpt
 
 def main(rank: int, world_size: int, args):
     ddp_setup(rank, world_size)
@@ -357,21 +501,44 @@ def main(rank: int, world_size: int, args):
     vocab_size = dataset_train.vocab_size
 
     sys.stdout.write("Initializing the model ...\n")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    pre_model, pre_checkpoint = load_pretrained_model(checkpoint_path)
 
-    model = Classification_model(checkpoint=checkpoint_path, num_labels=num_labels, vocab_size=vocab_size).to(rank)
+    model = ClassificationModel(pre_model, dataset_train.num_labels)
+    model.to(rank)
+
     sys.stdout.write("The model has been successfully initialized ...\n")
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args['lr'])
 
-    scheduler = optim.lr_scheduler.LinearLR(optimizer, start_factor=1e-2, total_iters=5)
+
 
     model = DDP(model, device_ids=[rank], output_device=rank, find_unused_parameters=True)
     if args['extract_feature_without_fine_tuning']:
         pass
+
+    elif args['use_saved_model'] and os.path.exists(
+            os.path.join(args['save_checkpoint_path'],
+                         f"BarcodeBERT_pre_trained_with_{args.pre_trained_on}_after_tuning.pth")):
+        fine_tuned_checkpoint_path = os.path.join(args['save_checkpoint_path'],
+                                                  f"BarcodeBERT_pre_trained_with_{args.pre_trained_on}_after_tuning.pth")
+        model.load_state_dict(torch.load(fine_tuned_checkpoint_path))
     else:
-        trained_model = train(args, [dataloader_train, dataloader_dev], rank, model, optimizer, scheduler)
-    destroy_process_group()
-    model = model.module.model
+        learning_rate = args['lr'] * args['batch_size'] / 128
+        optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+
+        scheduler = optim.lr_scheduler.LinearLR(optimizer, start_factor=1e-2, total_iters=5)
+
+        model = DDP(model, device_ids=[rank], output_device=rank, find_unused_parameters=True)
+        train(args, [dataloader_train, dataloader_dev], rank, model, optimizer, scheduler)
+        destroy_process_group()
+    model = model.module
+
+    # save model
+    if rank == 0:
+        torch.save(model.state_dict(), os.path.join(args['save_checkpoint_path'],
+                                                    f"BarcodeBERT_pre_trained_with_{args['pre_trained_on']}_after_tuning.pth"))
+    model = model.base_model
     if rank == 0:
         extract_and_save_class_level_feature(args, model, dataloader_all_data)
 
@@ -392,6 +559,8 @@ if __name__ == '__main__':
     parser.add_argument('--epoch', action='store', type=int, default=35)
     parser.add_argument('--weight_decay', action='store', type=float, default=1e-05)
     parser.add_argument('--extract_feature_without_fine_tuning', action='store_true', default=False)
+    parser.add_argument('--save_checkpoint_path', action='store', type=str, default="../checkpoints/BarcodeBERT_fine_tuned_with_INSECT")
+    parser.add_argument('--use_saved_model', action='store', type=bool, default=False)
 
     args = vars(parser.parse_args())
     if args['pre_trained_on'] == "CANADA-1.5M":
