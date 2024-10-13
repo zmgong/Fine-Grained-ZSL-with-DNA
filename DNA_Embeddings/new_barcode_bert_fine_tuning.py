@@ -41,7 +41,7 @@ class ClassificationModel(nn.Module):
         # Getting the embedding
         outputs = self.base_model(input_ids=input_ids, attention_mask=mask)
         embeddings = outputs.hidden_states[-1]
-        GAP_embeddings = embeddings.mean(1)  # TODO: Swap between GAP and CLS
+        GAP_embeddings = embeddings.mean(1)
         # calculate losses
         logits = self.classifier(GAP_embeddings.view(-1, self.hidden_size))
         loss = None
@@ -267,7 +267,7 @@ class ClassificationModel(nn.Module):
         # Getting the embedding
         outputs = self.base_model(input_ids=input_ids, attention_mask=mask)
         embeddings = outputs.hidden_states[-1]
-        GAP_embeddings = embeddings.mean(1)  # TODO: Swap between GAP and CLS
+        GAP_embeddings = embeddings.mean(1)
         # calculate losses
         logits = self.classifier(GAP_embeddings.view(-1, self.hidden_size))
         loss = None
@@ -511,9 +511,6 @@ def main(rank: int, world_size: int, args):
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args['lr'])
 
-
-
-    model = DDP(model, device_ids=[rank], output_device=rank, find_unused_parameters=True)
     if args['extract_feature_without_fine_tuning']:
         pass
 
@@ -528,17 +525,19 @@ def main(rank: int, world_size: int, args):
         optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
         scheduler = optim.lr_scheduler.LinearLR(optimizer, start_factor=1e-2, total_iters=5)
-
+        print(type(model))
         model = DDP(model, device_ids=[rank], output_device=rank, find_unused_parameters=True)
         train(args, [dataloader_train, dataloader_dev], rank, model, optimizer, scheduler)
         destroy_process_group()
-    model = model.module
+        model = model.module
 
     # save model
     if rank == 0:
+        os.makedirs(args['save_checkpoint_path'], exist_ok=True)
         torch.save(model.state_dict(), os.path.join(args['save_checkpoint_path'],
                                                     f"BarcodeBERT_pre_trained_with_{args['pre_trained_on']}_after_tuning.pth"))
     model = model.base_model
+
     if rank == 0:
         extract_and_save_class_level_feature(args, model, dataloader_all_data)
 
