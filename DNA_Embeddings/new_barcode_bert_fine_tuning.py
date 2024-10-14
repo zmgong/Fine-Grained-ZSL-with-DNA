@@ -98,10 +98,13 @@ def extract_and_save_class_level_feature(args, model, dataloader_all_data, devic
         )
         print(f"DNA embeddings is saved in {embedding_path}.")
     else:
-        args['output_dir'] = os.path.join("embedding_extract_from_new_BarcodeBERT", f"pre_trained_on{args['pre_trained_on']}", "with_fine_tuning")
+        args['output_dir'] = os.path.join("..", "data", "INSECT", "embedding_extract_from_new_BarcodeBERT")
         os.makedirs(args['output_dir'], exist_ok=True)
         embedding_path = os.path.join(args['output_dir'],
                                         f"dna_embedding_from_barcode_bert_pre_trained_on_{args['pre_trained_on']}_with_fine_tuning.csv")
+
+        if os.path.exists(embedding_path):
+            os.remove(embedding_path)
 
         np.savetxt(
             embedding_path,
@@ -509,8 +512,6 @@ def main(rank: int, world_size: int, args):
 
     sys.stdout.write("The model has been successfully initialized ...\n")
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args['lr'])
-
     if args['extract_feature_without_fine_tuning']:
         pass
 
@@ -524,7 +525,12 @@ def main(rank: int, world_size: int, args):
         learning_rate = args['lr'] * args['batch_size'] / 128
         optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
-        scheduler = optim.lr_scheduler.LinearLR(optimizer, start_factor=1e-2, total_iters=5)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            [p["lr"] for p in optimizer.param_groups],
+            epochs=args['epoch'],
+            steps_per_epoch=len(dataloader_train),
+        )
         print(type(model))
         model = DDP(model, device_ids=[rank], output_device=rank, find_unused_parameters=True)
         train(args, [dataloader_train, dataloader_dev], rank, model, optimizer, scheduler)
@@ -553,9 +559,9 @@ if __name__ == '__main__':
     parser.add_argument('--k_mer', action='store', type=int, default=4)
     parser.add_argument('--stride', action='store', type=int, default=4)
     parser.add_argument('--max_len', action='store', type=int, default=660)
-    parser.add_argument('--batch_size', action='store', type=int, default=128)
+    parser.add_argument('--batch_size', action='store', type=int, default=256)
     parser.add_argument('--lr', action='store', type=float, default=1e-4)
-    parser.add_argument('--epoch', action='store', type=int, default=35)
+    parser.add_argument('--epoch', action='store', type=int, default=80)
     parser.add_argument('--weight_decay', action='store', type=float, default=1e-05)
     parser.add_argument('--extract_feature_without_fine_tuning', action='store_true', default=False)
     parser.add_argument('--save_checkpoint_path', action='store', type=str, default="../checkpoints/BarcodeBERT_fine_tuned_with_INSECT")
