@@ -331,12 +331,13 @@ def train(args, dataloader, device, model, optimizer, scheduler):
 
             loss.backward()
             optimizer.step()
+            scheduler.step()
             pbar.set_description(f"Epoch {epoch}, Device {device}: Loss is {loss.item()} || lr: {scheduler.get_last_lr()}")
         epoch_loss = epoch_loss / len(dataloader_train)
         epoch_loss_list.append(epoch_loss)
 
         before_lr = optimizer.param_groups[0]["lr"]
-        scheduler.step()
+
         after_lr = optimizer.param_groups[0]["lr"]
         sys.stdout.write("Epoch %d: lr %f -> %f" % (epoch, before_lr, after_lr))
 
