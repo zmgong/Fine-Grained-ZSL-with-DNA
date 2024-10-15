@@ -103,7 +103,8 @@ class data_loader(object):
                 return os.path.join(self.datapath, "dna_embedding_supervised_fine_tuned_pablo_bert_5_mer_ep_40.csv")
 
         elif self.side_info_source == "dna_pablo_bert_pre_trained_on_5m_with_fine_tuning":
-            print(f"Using embeddings from {self.side_info_source}")
+            path = os.path.join(self.datapath,"embedding_extract_from_new_BarcodeBERT", "dna_embedding_from_barcode_bert_pre_trained_on_BIOSCAN-5M_with_fine_tuning.csv")
+            print(f"Using embeddings from {path}")
             return os.path.join(
                 self.datapath,
                 "embedding_extract_from_new_BarcodeBERT",
