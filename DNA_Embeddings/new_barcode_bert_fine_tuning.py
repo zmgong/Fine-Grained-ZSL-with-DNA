@@ -41,7 +41,20 @@ class ClassificationModel(nn.Module):
         # Getting the embedding
         outputs = self.base_model(input_ids=input_ids, attention_mask=mask)
         embeddings = outputs.hidden_states[-1]
-        GAP_embeddings = embeddings.mean(1)
+
+        n_embeddings = mask.sum(axis=1)
+        # print(n_embeddings.shape)
+
+        att_mask = mask.unsqueeze(2).expand(-1, -1, self.hidden_size)
+        # print(att_mask.shape)
+
+        out = embeddings * att_mask
+        # print(out.shape)
+
+        out = out.sum(axis=1)
+        # print(out.shape)
+
+        GAP_embeddings = torch.div(out.t(), n_embeddings)
         # calculate losses
         logits = self.classifier(GAP_embeddings.view(-1, self.hidden_size))
         loss = None
