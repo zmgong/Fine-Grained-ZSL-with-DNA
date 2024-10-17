@@ -583,7 +583,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_len', action='store', type=int, default=660)
     parser.add_argument('--batch_size', action='store', type=int, default=256)
     parser.add_argument('--lr', action='store', type=float, default=1e-4)
-    parser.add_argument('--epoch', action='store', type=int, default=80)
+    parser.add_argument('--epoch', action='store', type=int, default=50)
     parser.add_argument('--weight_decay', action='store', type=float, default=1e-05)
     parser.add_argument('--extract_feature_without_fine_tuning', action='store_true', default=False)
     parser.add_argument('--save_checkpoint_path', action='store', type=str, default="../checkpoints/BarcodeBERT_fine_tuned_with_INSECT")
