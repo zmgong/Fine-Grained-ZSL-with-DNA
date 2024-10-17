@@ -286,6 +286,7 @@ class ClassificationModel(nn.Module):
         outputs = self.base_model(input_ids=input_ids, attention_mask=mask)
         embeddings = outputs.hidden_states[-1]
         GAP_embeddings = embeddings.mean(1)
+        GAP_embeddings = GAP_embeddings.t()
         # calculate losses
         logits = self.classifier(GAP_embeddings.view(-1, self.hidden_size))
         loss = None
@@ -415,7 +416,7 @@ def test(dataloader_test, device, model):
     sys.stdout.write("test set accuracy: %f" % eval_acc)
 
 
-def ddp_setup(rank: int, world_size: int):
+def ddp_setup(rank: int, world_size: int, port_number: str):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '8000'
     torch.distributed.init_process_group("nccl", rank=rank, world_size=world_size)
@@ -497,7 +498,12 @@ def load_pretrained_model(checkpoint_path, device=None):
     return model, ckpt
 
 def main(rank: int, world_size: int, args):
-    ddp_setup(rank, world_size)
+
+    # random select port number from 8000 to 9000
+    port_number = np.random.randint(8000, 9000)
+    port_number = str(port_number)
+
+    ddp_setup(rank, world_size, port_number=port_number)
     # Loading data
     sys.stdout.write("Loading the dataset is started.\n")
     x_train, y_train, x_val, y_val, barcodes, labels, num_classes = load_data(args)
