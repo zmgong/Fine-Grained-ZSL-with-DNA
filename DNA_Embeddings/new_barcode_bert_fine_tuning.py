@@ -98,9 +98,9 @@ def extract_and_save_class_level_feature(args, model, dataloader_all_data, devic
     class_embed = class_embed.T.squeeze()
 
     # save results
-
+    args['output_dir'] = os.path.join("..", "data", "INSECT", "embedding_extract_from_new_BarcodeBERT")
     if args['extract_feature_without_fine_tuning']:
-        args['output_dir'] = os.path.join("embedding_extract_from_new_BarcodeBERT", f"pre_trained_on{args['pre_trained_on']}", "without_fine_tuning")
+
         os.makedirs(args['output_dir'], exist_ok=True)
         embedding_path = os.path.join(args['output_dir'],
                                         f"dna_embedding_from_barcode_bert_pre_trained_on_{args['pre_trained_on']}_without_fine_tuning.csv")
@@ -111,7 +111,6 @@ def extract_and_save_class_level_feature(args, model, dataloader_all_data, devic
         )
         print(f"DNA embeddings is saved in {embedding_path}.")
     else:
-        args['output_dir'] = os.path.join("..", "data", "INSECT", "embedding_extract_from_new_BarcodeBERT")
         os.makedirs(args['output_dir'], exist_ok=True)
         embedding_path = os.path.join(args['output_dir'],
                                         f"dna_embedding_from_barcode_bert_pre_trained_on_{args['pre_trained_on']}_with_fine_tuning.csv")
@@ -185,34 +184,6 @@ class DNADataset(Dataset):
         label = torch.tensor(self.labels[idx], dtype=torch.int64)
         return processed_barcode, att_mask, label
 
-class KmerTokenizer(object):
-    def __init__(self, k, vocabulary_mapper, stride=1, padding=False, max_len=660):
-        self.k = k
-        self.stride = stride
-        self.padding = padding
-        self.max_len = max_len
-        self.vocabulary_mapper = vocabulary_mapper
-
-    def __call__(self, dna_sequence, offset=0):
-        tokens = []
-        att_mask = [1] * (self.max_len // self.stride)
-        x = dna_sequence[offset:]
-        if self.padding:
-            if len(x) > self.max_len:
-                x = x[: self.max_len]
-            else:
-                att_mask[len(x) // self.stride :] = [0] * (len(att_mask) - len(x) // self.stride)
-                x = x + "N" * (self.max_len - len(x))
-        for i in range(0, len(x) - self.k + 1, self.stride):
-            k_mer = x[i : i + self.k]
-            tokens.append(k_mer)
-
-        tokens = torch.tensor(self.vocabulary_mapper(tokens), dtype=torch.int64)
-        att_mask = torch.tensor(att_mask, dtype=torch.int32)
-
-        return tokens, att_mask
-
-
 def __init__(self, x, y, k_mer=4, stride=4, max_len=256, randomize_offset=False, tokenizer="kmer",
              tokenize_n_nucleotide=False):
     self.k_mer = k_mer
@@ -269,6 +240,37 @@ def __getitem__(self, idx):
     processed_barcode, att_mask = self.tokenizer(self.barcodes[idx], offset=offset)
     label = torch.tensor(self.labels[idx], dtype=torch.int64)
     return processed_barcode, att_mask, label
+
+
+class KmerTokenizer(object):
+    def __init__(self, k, vocabulary_mapper, stride=1, padding=False, max_len=660):
+        self.k = k
+        self.stride = stride
+        self.padding = padding
+        self.max_len = max_len
+        self.vocabulary_mapper = vocabulary_mapper
+
+    def __call__(self, dna_sequence, offset=0):
+        tokens = []
+        att_mask = [1] * (self.max_len // self.stride)
+        x = dna_sequence[offset:]
+        if self.padding:
+            if len(x) > self.max_len:
+                x = x[: self.max_len]
+            else:
+                att_mask[len(x) // self.stride :] = [0] * (len(att_mask) - len(x) // self.stride)
+                x = x + "N" * (self.max_len - len(x))
+        for i in range(0, len(x) - self.k + 1, self.stride):
+            k_mer = x[i : i + self.k]
+            tokens.append(k_mer)
+
+        tokens = torch.tensor(self.vocabulary_mapper(tokens), dtype=torch.int64)
+        att_mask = torch.tensor(att_mask, dtype=torch.int32)
+
+        return tokens, att_mask
+
+
+
 
 
 class ClassificationModel(nn.Module):
