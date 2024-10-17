@@ -288,7 +288,7 @@ class ClassificationModel(nn.Module):
         GAP_embeddings = embeddings.mean(1)
         GAP_embeddings = GAP_embeddings.t()
         # calculate losses
-        logits = self.classifier(GAP_embeddings.view(-1, self.hidden_size))
+        logits = self.classifier(GAP_embeddings.reshape(-1, self.hidden_size))
         loss = None
         if labels is not None:
             loss = F.cross_entropy(logits.view(-1, self.num_labels), labels.view(-1))
