@@ -184,63 +184,6 @@ class DNADataset(Dataset):
         label = torch.tensor(self.labels[idx], dtype=torch.int64)
         return processed_barcode, att_mask, label
 
-def __init__(self, x, y, k_mer=4, stride=4, max_len=256, randomize_offset=False, tokenizer="kmer",
-             tokenize_n_nucleotide=False):
-    self.k_mer = k_mer
-    self.stride = k_mer if stride is None else stride
-    self.max_len = max_len
-    self.randomize_offset = randomize_offset
-
-    # Vocabulary
-    base_pairs = "ACGT"
-    self.special_tokens = ["[MASK]", "[UNK]"]  # ["[MASK]", "[CLS]", "[SEP]", "[PAD]", "[EOS]", "[UNK]"]
-    UNK_TOKEN = "[UNK]"
-
-    if tokenize_n_nucleotide:
-        # Encode kmers which contain N differently depending on where it is
-        base_pairs += "N"
-
-    if tokenizer == "kmer":
-        kmers = ["".join(kmer) for kmer in product(base_pairs, repeat=self.k_mer)]
-
-        # Separate between good (idx < 4**k) and bad k-mers (idx > 4**k) for prediction
-        if tokenize_n_nucleotide:
-            prediction_kmers = []
-            other_kmers = []
-            for kmer in kmers:
-                if "N" in kmer:
-                    other_kmers.append(kmer)
-                else:
-                    prediction_kmers.append(kmer)
-
-            kmers = prediction_kmers + other_kmers
-
-        kmer_dict = dict.fromkeys(kmers, 1)
-        self.vocab = build_vocab_from_dict(kmer_dict, specials=self.special_tokens)
-        self.vocab.set_default_index(self.vocab[UNK_TOKEN])
-        self.vocab_size = len(self.vocab)
-        self.tokenizer = KmerTokenizer(
-            self.k_mer, self.vocab, stride=self.stride, padding=True, max_len=self.max_len
-        )
-    else:
-        raise ValueError(f'Tokenizer "{tokenizer}" not recognized.')
-
-    self.barcodes = x
-    self.labels = y
-    self.num_labels = len(np.unique(self.labels))
-
-def __len__(self):
-    return len(self.barcodes)
-
-def __getitem__(self, idx):
-    if self.randomize_offset:
-        offset = torch.randint(self.k_mer, (1,)).item()
-    else:
-        offset = 0
-    processed_barcode, att_mask = self.tokenizer(self.barcodes[idx], offset=offset)
-    label = torch.tensor(self.labels[idx], dtype=torch.int64)
-    return processed_barcode, att_mask, label
-
 
 class KmerTokenizer(object):
     def __init__(self, k, vocabulary_mapper, stride=1, padding=False, max_len=660):
