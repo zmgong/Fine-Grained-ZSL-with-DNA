@@ -185,7 +185,7 @@ class DNADataset(Dataset):
         return processed_barcode, att_mask, label
 
 
-class KmerTokenizer(object):
+class NewKmerTokenizer(object):
     def __init__(self, k, vocabulary_mapper, stride=1, padding=False, max_len=660):
         self.k = k
         self.stride = stride
