@@ -162,7 +162,7 @@ class DNADataset(Dataset):
             self.vocab = build_vocab_from_dict(kmer_dict, specials=self.special_tokens)
             self.vocab.set_default_index(self.vocab[UNK_TOKEN])
             self.vocab_size = len(self.vocab)
-            self.tokenizer = KmerTokenizer(
+            self.tokenizer = NewKmerTokenizer(
                 self.k_mer, self.vocab, stride=self.stride, padding=True, max_len=self.max_len
             )
         else:
