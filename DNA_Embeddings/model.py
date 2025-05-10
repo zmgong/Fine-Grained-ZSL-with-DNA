@@ -154,16 +154,17 @@ def load_model(
         state_dict = remove_extra_pre_fix(state_dict)
         model.load_state_dict(state_dict)
 
-    elif args.model == "new_barcode_bert":
 
+    elif args.model == "new_barcode_bert":
         tokenizer = KmerTokenizer(k, stride=k)
         model, ckpt = load_pretrained_model(args.checkpoint, device=None)
         try:
             k = ckpt['config'].k_mer
-        except:
+        except (KeyError, AttributeError):
             pass
         tokenizer = KmerTokenizer(k, stride=k)
         sequence_pipeline = lambda x: [0, *vocab(tokenizer(pad(x)))]
+
 
 
 
