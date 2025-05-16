@@ -22,6 +22,7 @@ To run the code, You may create a conda environment (assuming you already have m
 
 ```
 conda create --name bzsl --file requirements.txt
+pip install accelerate
 ```
 
 If you already have  Python installed, you may just go ahead and manually install numpy and scipy without creating virtual environment by `pip install numpy=1.19.2`.
