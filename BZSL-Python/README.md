@@ -21,8 +21,11 @@ scipy=1.6.1
 To run the code, You may create a conda environment (assuming you already have miniconda3 installed) by the following command on terminal:
 
 ```
-conda create --name bzsl --file requirements.txt
-pip install accelerate
+conda create -n bioscan-clip-BZSL python=3.10 -y
+conda activate bioscan-clip-BZSL
+pip install -r requirements.txt
+pip list
+
 ```
 
 If you already have  Python installed, you may just go ahead and manually install numpy and scipy without creating virtual environment by `pip install numpy=1.19.2`.
