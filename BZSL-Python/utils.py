@@ -295,7 +295,7 @@ class data_loader(object):
                 hyperparams = [0.1, 25, 25 * dim, 5, 3]
 
         if self.dataset == "BIOSCAN_1M":
-            hyperparams = [0.1, 10, 12500, 10, 3]
+            hyperparams = [1.0, 10, 50000, 5, 2]
 
 
 
