@@ -284,7 +284,7 @@ class data_loader(object):
         dim = 500
 
         if self.dataset == "INSECT":
-            hyperparams = [0.1, 10, 5 * dim, 10, 3]
+            hyperparams = [0.1, 10, 12500, 10, 1]
 
         if self.dataset == "CUB":
             if self.side_info_source == "original":
